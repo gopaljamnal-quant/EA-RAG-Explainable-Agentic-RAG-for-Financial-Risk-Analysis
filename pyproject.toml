@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ea-rag"
+version = "0.1.0"
+description = "Explainable Agentic RAG for Financial Risk Analysis (reference implementation)"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "scikit-learn>=1.2",
+    "networkx>=3.0",
+]
+
+[project.optional-dependencies]
+ollama = ["requests>=2.31"]
+hf = ["torch>=2.2", "transformers>=4.51", "accelerate>=0.30"]
+hf-4bit = ["torch>=2.2", "transformers>=4.51", "accelerate>=0.30", "bitsandbytes>=0.43"]
+anthropic = ["anthropic>=0.40"]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+include = ["ea_rag*"]

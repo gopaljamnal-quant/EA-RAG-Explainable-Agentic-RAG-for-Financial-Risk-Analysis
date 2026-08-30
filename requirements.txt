@@ -1,0 +1,22 @@
+# Core dependencies (required) -- enough to run demo.py --backend mock
+numpy>=1.24
+scipy>=1.10
+scikit-learn>=1.2
+networkx>=3.0
+
+# Optional: only needed for OllamaLLM (--backend ollama). Ollama itself
+# (the server) is installed separately: https://ollama.com/download
+# requests>=2.31
+
+# Optional: only needed for HuggingFaceLLM (--backend hf), i.e. loading
+# open-weight model files directly instead of via Ollama
+# torch>=2.2
+# transformers>=4.51        # 4.51+ for Qwen3 chat-template / enable_thinking support
+# accelerate>=0.30
+# bitsandbytes>=0.43        # only if using --load-in-4bit
+
+# Optional: only needed if you use AnthropicLLM instead of an open-weight backend
+# anthropic>=0.40
+
+# Optional: only needed to run the test suite
+# pytest>=7.0
