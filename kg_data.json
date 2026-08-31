@@ -1,0 +1,1485 @@
+{
+  "nodes": [
+    {
+      "id": "washington",
+      "label": "Washington",
+      "type": "COMPANY"
+    },
+    {
+      "id": "mark_one",
+      "label": "Mark One",
+      "type": "COMPANY"
+    },
+    {
+      "id": "for",
+      "label": "For",
+      "type": "COMPANY"
+    },
+    {
+      "id": "june",
+      "label": "June",
+      "type": "COMPANY"
+    },
+    {
+      "id": "commission_file_number",
+      "label": "Commission File Number",
+      "type": "COMPANY"
+    },
+    {
+      "id": "apple_inc",
+      "label": "Apple Inc",
+      "type": "COMPANY"
+    },
+    {
+      "id": "exact",
+      "label": "Exact",
+      "type": "COMPANY"
+    },
+    {
+      "id": "registrant",
+      "label": "Registrant",
+      "type": "COMPANY"
+    },
+    {
+      "id": "california",
+      "label": "California",
+      "type": "COMPANY"
+    },
+    {
+      "id": "state",
+      "label": "State",
+      "type": "COMPANY"
+    },
+    {
+      "id": "employer_identification_no",
+      "label": "Employer Identification No",
+      "type": "COMPANY"
+    },
+    {
+      "id": "address",
+      "label": "Address",
+      "type": "COMPANY"
+    },
+    {
+      "id": "zip_code",
+      "label": "Zip Code",
+      "type": "COMPANY"
+    },
+    {
+      "id": "securities",
+      "label": "Securities",
+      "type": "COMPANY"
+    },
+    {
+      "id": "section",
+      "label": "Section",
+      "type": "COMPANY"
+    },
+    {
+      "id": "act",
+      "label": "Act",
+      "type": "COMPANY"
+    },
+    {
+      "id": "title",
+      "label": "Title",
+      "type": "COMPANY"
+    },
+    {
+      "id": "trading",
+      "label": "Trading",
+      "type": "COMPANY"
+    },
+    {
+      "id": "name",
+      "label": "Name",
+      "type": "COMPANY"
+    },
+    {
+      "id": "common_stock",
+      "label": "Common Stock",
+      "type": "COMPANY"
+    },
+    {
+      "id": "notes",
+      "label": "Notes",
+      "type": "COMPANY"
+    },
+    {
+      "id": "the_nasdaq_st",
+      "label": "The Nasdaq St",
+      "type": "COMPANY"
+    },
+    {
+      "id": "indicate",
+      "label": "Indicate",
+      "type": "COMPANY"
+    },
+    {
+      "id": "securities_exchange_act",
+      "label": "Securities Exchange Act",
+      "type": "COMPANY"
+    },
+    {
+      "id": "yes",
+      "label": "Yes",
+      "type": "COMPANY"
+    },
+    {
+      "id": "no",
+      "label": "No",
+      "type": "COMPANY"
+    },
+    {
+      "id": "interactive_data_file",
+      "label": "Interactive Data File",
+      "type": "COMPANY"
+    },
+    {
+      "id": "rule",
+      "label": "Rule",
+      "type": "COMPANY"
+    },
+    {
+      "id": "regulation",
+      "label": "Regulation",
+      "type": "COMPANY"
+    },
+    {
+      "id": "registr",
+      "label": "Registr",
+      "type": "COMPANY"
+    },
+    {
+      "id": "see",
+      "label": "See",
+      "type": "COMPANY"
+    },
+    {
+      "id": "exchange_act",
+      "label": "Exchange Act",
+      "type": "COMPANY"
+    },
+    {
+      "id": "large",
+      "label": "Large",
+      "type": "COMPANY"
+    },
+    {
+      "id": "accelerated",
+      "label": "Accelerated",
+      "type": "COMPANY"
+    },
+    {
+      "id": "non",
+      "label": "Non",
+      "type": "COMPANY"
+    },
+    {
+      "id": "smaller",
+      "label": "Smaller",
+      "type": "COMPANY"
+    },
+    {
+      "id": "emerging",
+      "label": "Emerging",
+      "type": "COMPANY"
+    },
+    {
+      "id": "if",
+      "label": "If",
+      "type": "COMPANY"
+    },
+    {
+      "id": "july",
+      "label": "July",
+      "type": "COMPANY"
+    },
+    {
+      "id": "form",
+      "label": "Form",
+      "type": "COMPANY"
+    },
+    {
+      "id": "page\npart",
+      "label": "Page\nPart",
+      "type": "COMPANY"
+    },
+    {
+      "id": "item",
+      "label": "Item",
+      "type": "COMPANY"
+    },
+    {
+      "id": "financial_statements",
+      "label": "Financial Statements",
+      "type": "COMPANY"
+    },
+    {
+      "id": "management",
+      "label": "Management",
+      "type": "COMPANY"
+    },
+    {
+      "id": "discussion",
+      "label": "Discussion",
+      "type": "COMPANY"
+    },
+    {
+      "id": "analysis",
+      "label": "Analysis",
+      "type": "COMPANY"
+    },
+    {
+      "id": "financial_condition",
+      "label": "Financial Condition",
+      "type": "COMPANY"
+    },
+    {
+      "id": "results",
+      "label": "Results",
+      "type": "COMPANY"
+    },
+    {
+      "id": "operations",
+      "label": "Operations",
+      "type": "COMPANY"
+    },
+    {
+      "id": "quantitative",
+      "label": "Quantitative",
+      "type": "COMPANY"
+    },
+    {
+      "id": "qualitative_disclosures_about_market_risk",
+      "label": "Qualitative Disclosures About Market Risk",
+      "type": "RISK_FACTOR"
+    },
+    {
+      "id": "controls",
+      "label": "Controls",
+      "type": "COMPANY"
+    },
+    {
+      "id": "procedures",
+      "label": "Procedures",
+      "type": "COMPANY"
+    },
+    {
+      "id": "part",
+      "label": "Part",
+      "type": "COMPANY"
+    },
+    {
+      "id": "in",
+      "label": "In",
+      "type": "COMPANY"
+    },
+    {
+      "id": "net",
+      "label": "Net",
+      "type": "COMPANY"
+    },
+    {
+      "id": "products",
+      "label": "Products",
+      "type": "COMPANY"
+    },
+    {
+      "id": "services",
+      "label": "Services",
+      "type": "COMPANY"
+    },
+    {
+      "id": "total",
+      "label": "Total",
+      "type": "COMPANY"
+    },
+    {
+      "id": "cost",
+      "label": "Cost",
+      "type": "COMPANY"
+    },
+    {
+      "id": "gross",
+      "label": "Gross",
+      "type": "COMPANY"
+    },
+    {
+      "id": "operating",
+      "label": "Operating",
+      "type": "COMPANY"
+    },
+    {
+      "id": "research",
+      "label": "Research",
+      "type": "COMPANY"
+    },
+    {
+      "id": "selling",
+      "label": "Selling",
+      "type": "COMPANY"
+    },
+    {
+      "id": "other",
+      "label": "Other",
+      "type": "COMPANY"
+    },
+    {
+      "id": "income",
+      "label": "Income",
+      "type": "COMPANY"
+    },
+    {
+      "id": "provision",
+      "label": "Provision",
+      "type": "COMPANY"
+    },
+    {
+      "id": "earnings",
+      "label": "Earnings",
+      "type": "COMPANY"
+    },
+    {
+      "id": "basic",
+      "label": "Basic",
+      "type": "COMPANY"
+    },
+    {
+      "id": "diluted",
+      "label": "Diluted",
+      "type": "COMPANY"
+    },
+    {
+      "id": "shares",
+      "label": "Shares",
+      "type": "COMPANY"
+    },
+    {
+      "id": "condensed_consolidated_financial_statements",
+      "label": "Condensed Consolidated Financial Statements",
+      "type": "COMPANY"
+    },
+    {
+      "id": "unaudited",
+      "label": "Unaudited",
+      "type": "COMPANY"
+    },
+    {
+      "id": "change",
+      "label": "Change",
+      "type": "COMPANY"
+    },
+    {
+      "id": "adjustment",
+      "label": "Adjustment",
+      "type": "COMPANY"
+    },
+    {
+      "id": "september",
+      "label": "September",
+      "type": "COMPANY"
+    },
+    {
+      "id": "current",
+      "label": "Current",
+      "type": "COMPANY"
+    },
+    {
+      "id": "cash",
+      "label": "Cash",
+      "type": "COMPANY"
+    },
+    {
+      "id": "marketable",
+      "label": "Marketable",
+      "type": "COMPANY"
+    },
+    {
+      "id": "acc",
+      "label": "Acc",
+      "type": "COMPANY"
+    },
+    {
+      "id": "accounts",
+      "label": "Accounts",
+      "type": "COMPANY"
+    },
+    {
+      "id": "vendor",
+      "label": "Vendor",
+      "type": "COMPANY"
+    },
+    {
+      "id": "inventories",
+      "label": "Inventories",
+      "type": "COMPANY"
+    },
+    {
+      "id": "property",
+      "label": "Property",
+      "type": "COMPANY"
+    },
+    {
+      "id": "intangible",
+      "label": "Intangible",
+      "type": "COMPANY"
+    },
+    {
+      "id": "deferred",
+      "label": "Deferred",
+      "type": "COMPANY"
+    },
+    {
+      "id": "commercial",
+      "label": "Commercial",
+      "type": "COMPANY"
+    },
+    {
+      "id": "term",
+      "label": "Term",
+      "type": "COMPANY"
+    },
+    {
+      "id": "commitments",
+      "label": "Commitments",
+      "type": "COMPANY"
+    },
+    {
+      "id": "sharehol",
+      "label": "Sharehol",
+      "type": "COMPANY"
+    },
+    {
+      "id": "shareholders",
+      "label": "Shareholders",
+      "type": "COMPANY"
+    },
+    {
+      "id": "common",
+      "label": "Common",
+      "type": "COMPANY"
+    },
+    {
+      "id": "retained",
+      "label": "Retained",
+      "type": "COMPANY"
+    },
+    {
+      "id": "accumulated",
+      "label": "Accumulated",
+      "type": "COMPANY"
+    },
+    {
+      "id": "beginning",
+      "label": "Beginning",
+      "type": "COMPANY"
+    },
+    {
+      "id": "share",
+      "label": "Share",
+      "type": "COMPANY"
+    },
+    {
+      "id": "ending",
+      "label": "Ending",
+      "type": "COMPANY"
+    },
+    {
+      "id": "dividends",
+      "label": "Dividends",
+      "type": "COMPANY"
+    },
+    {
+      "id": "adjustments",
+      "label": "Adjustments",
+      "type": "COMPANY"
+    },
+    {
+      "id": "depreciation",
+      "label": "Depreciation",
+      "type": "COMPANY"
+    },
+    {
+      "id": "changes",
+      "label": "Changes",
+      "type": "COMPANY"
+    },
+    {
+      "id": "acco",
+      "label": "Acco",
+      "type": "COMPANY"
+    },
+    {
+      "id": "investing",
+      "label": "Investing",
+      "type": "COMPANY"
+    },
+    {
+      "id": "purchases",
+      "label": "Purchases",
+      "type": "COMPANY"
+    },
+    {
+      "id": "proceeds",
+      "label": "Proceeds",
+      "type": "COMPANY"
+    },
+    {
+      "id": "payments",
+      "label": "Payments",
+      "type": "COMPANY"
+    },
+    {
+      "id": "financing",
+      "label": "Financing",
+      "type": "COMPANY"
+    },
+    {
+      "id": "repurchases",
+      "label": "Repurchases",
+      "type": "COMPANY"
+    },
+    {
+      "id": "repayments",
+      "label": "Repayments",
+      "type": "COMPANY"
+    },
+    {
+      "id": "increase",
+      "label": "Increase",
+      "type": "COMPANY"
+    },
+    {
+      "id": "supplemental",
+      "label": "Supplemental",
+      "type": "COMPANY"
+    },
+    {
+      "id": "note",
+      "label": "Note",
+      "type": "COMPANY"
+    },
+    {
+      "id": "summary",
+      "label": "Summary",
+      "type": "COMPANY"
+    },
+    {
+      "id": "presentation",
+      "label": "Presentation",
+      "type": "COMPANY"
+    },
+    {
+      "id": "preparation\nthe",
+      "label": "Preparation\nThe",
+      "type": "COMPANY"
+    },
+    {
+      "id": "apple",
+      "label": "Apple",
+      "type": "COMPANY"
+    },
+    {
+      "id": "company",
+      "label": "Company",
+      "type": "COMPANY"
+    },
+    {
+      "id": "the",
+      "label": "The",
+      "type": "COMPANY"
+    },
+    {
+      "id": "certain",
+      "label": "Certain",
+      "type": "COMPANY"
+    },
+    {
+      "id": "these",
+      "label": "These",
+      "type": "COMPANY"
+    },
+    {
+      "id": "annual_report",
+      "label": "Annual Report",
+      "type": "COMPANY"
+    },
+    {
+      "id": "the_company",
+      "label": "The Company",
+      "type": "COMPANY"
+    },
+    {
+      "id": "saturday",
+      "label": "Saturday",
+      "type": "COMPANY"
+    },
+    {
+      "id": "an",
+      "label": "An",
+      "type": "COMPANY"
+    },
+    {
+      "id": "unless",
+      "label": "Unless",
+      "type": "COMPANY"
+    },
+    {
+      "id": "revenue\nthe",
+      "label": "Revenue\nThe",
+      "type": "COMPANY"
+    },
+    {
+      "id": "mac",
+      "label": "Mac",
+      "type": "COMPANY"
+    },
+    {
+      "id": "wearables",
+      "label": "Wearables",
+      "type": "COMPANY"
+    },
+    {
+      "id": "home",
+      "label": "Home",
+      "type": "COMPANY"
+    },
+    {
+      "id": "accessories",
+      "label": "Accessories",
+      "type": "COMPANY"
+    },
+    {
+      "id": "portion",
+      "label": "Portion",
+      "type": "COMPANY"
+    },
+    {
+      "id": "segment\ninformation",
+      "label": "Segment\nInformation",
+      "type": "COMPANY"
+    },
+    {
+      "id": "greater_china",
+      "label": "Greater China",
+      "type": "COMPANY"
+    },
+    {
+      "id": "as",
+      "label": "As",
+      "type": "COMPANY"
+    },
+    {
+      "id": "numerator",
+      "label": "Numerator",
+      "type": "COMPANY"
+    },
+    {
+      "id": "denominator",
+      "label": "Denominator",
+      "type": "COMPANY"
+    },
+    {
+      "id": "weighted",
+      "label": "Weighted",
+      "type": "COMPANY"
+    },
+    {
+      "id": "effect",
+      "label": "Effect",
+      "type": "COMPANY"
+    },
+    {
+      "id": "financial_instruments\ncash",
+      "label": "Financial Instruments\nCash",
+      "type": "COMPANY"
+    },
+    {
+      "id": "cash_equivalents",
+      "label": "Cash Equivalents",
+      "type": "COMPANY"
+    },
+    {
+      "id": "marketable_securities\nthe",
+      "label": "Marketable Securities\nThe",
+      "type": "COMPANY"
+    },
+    {
+      "id": "current_non",
+      "label": "Current Non",
+      "type": "COMPANY"
+    },
+    {
+      "id": "current\nadjusted_unrealized_unrealized_fair_cash_marketable_marketable\ncost_gains_losses_value_equivalents_securities_securities\ncash",
+      "label": "Current\nAdjusted Unrealized Unrealized Fair Cash Marketable Marketable\nCost Gains Losses Value Equivalents Securities Securities\nCash",
+      "type": "COMPANY"
+    },
+    {
+      "id": "level",
+      "label": "Level",
+      "type": "COMPANY"
+    },
+    {
+      "id": "money",
+      "label": "Money",
+      "type": "COMPANY"
+    },
+    {
+      "id": "mutual",
+      "label": "Mutual",
+      "type": "COMPANY"
+    },
+    {
+      "id": "subtotal",
+      "label": "Subtotal",
+      "type": "SUBSIDIARY"
+    },
+    {
+      "id": "treasury",
+      "label": "Treasury",
+      "type": "COMPANY"
+    },
+    {
+      "id": "certificates",
+      "label": "Certificates",
+      "type": "COMPANY"
+    },
+    {
+      "id": "corporate",
+      "label": "Corporate",
+      "type": "COMPANY"
+    },
+    {
+      "id": "mortgage",
+      "label": "Mortgage",
+      "type": "COMPANY"
+    },
+    {
+      "id": "municipal",
+      "label": "Municipal",
+      "type": "COMPANY"
+    },
+    {
+      "id": "mortga",
+      "label": "Mortga",
+      "type": "COMPANY"
+    },
+    {
+      "id": "derivative_instruments",
+      "label": "Derivative Instruments",
+      "type": "COMPANY"
+    },
+    {
+      "id": "hedging\nthe_company",
+      "label": "Hedging\nThe Company",
+      "type": "COMPANY"
+    },
+    {
+      "id": "however",
+      "label": "However",
+      "type": "COMPANY"
+    },
+    {
+      "id": "there",
+      "label": "There",
+      "type": "COMPANY"
+    },
+    {
+      "id": "foreign_exchange_rate_risk\nto",
+      "label": "Foreign Exchange Rate Risk\nTo",
+      "type": "RISK_FACTOR"
+    },
+    {
+      "id": "to",
+      "label": "To",
+      "type": "COMPANY"
+    },
+    {
+      "id": "interest_rate_risk\nto",
+      "label": "Interest Rate Risk\nTo",
+      "type": "RISK_FACTOR"
+    },
+    {
+      "id": "derivative",
+      "label": "Derivative",
+      "type": "COMPANY"
+    },
+    {
+      "id": "foreign",
+      "label": "Foreign",
+      "type": "COMPANY"
+    },
+    {
+      "id": "interest",
+      "label": "Interest",
+      "type": "COMPANY"
+    },
+    {
+      "id": "accounts_receivable",
+      "label": "Accounts Receivable",
+      "type": "COMPANY"
+    },
+    {
+      "id": "vendor_non",
+      "label": "Vendor Non",
+      "type": "COMPANY"
+    },
+    {
+      "id": "trade_receivables\nthe_company",
+      "label": "Trade Receivables\nThe Company",
+      "type": "COMPANY"
+    },
+    {
+      "id": "rather",
+      "label": "Rather",
+      "type": "COMPANY"
+    },
+    {
+      "id": "condensed_consolidated_financial_statement_details\nthe",
+      "label": "Condensed Consolidated Financial Statement Details\nThe",
+      "type": "COMPANY"
+    },
+    {
+      "id": "inventories\njune",
+      "label": "Inventories\nJune",
+      "type": "COMPANY"
+    },
+    {
+      "id": "components",
+      "label": "Components",
+      "type": "COMPANY"
+    },
+    {
+      "id": "finished",
+      "label": "Finished",
+      "type": "COMPANY"
+    },
+    {
+      "id": "plant",
+      "label": "Plant",
+      "type": "COMPANY"
+    },
+    {
+      "id": "equipment",
+      "label": "Equipment",
+      "type": "COMPANY"
+    },
+    {
+      "id": "net\njune",
+      "label": "Net\nJune",
+      "type": "COMPANY"
+    },
+    {
+      "id": "intangible_assets",
+      "label": "Intangible Assets",
+      "type": "COMPANY"
+    },
+    {
+      "id": "less",
+      "label": "Less",
+      "type": "COMPANY"
+    },
+    {
+      "id": "debt\ncommercial_paper\nthe_company",
+      "label": "Debt\nCommercial Paper\nThe Company",
+      "type": "COMPANY"
+    },
+    {
+      "id": "maturities",
+      "label": "Maturities",
+      "type": "COMPANY"
+    },
+    {
+      "id": "term_debt\nas",
+      "label": "Term Debt\nAs",
+      "type": "COMPANY"
+    },
+    {
+      "id": "equity\nshare_repurchase_program\nduring",
+      "label": "Equity\nShare Repurchase Program\nDuring",
+      "type": "COMPANY"
+    },
+    {
+      "id": "under",
+      "label": "Under",
+      "type": "COMPANY"
+    },
+    {
+      "id": "exchange\nact",
+      "label": "Exchange\nAct",
+      "type": "COMPANY"
+    },
+    {
+      "id": "based_compensation\nrestricted_stock_units",
+      "label": "Based Compensation\nRestricted Stock Units",
+      "type": "COMPANY"
+    },
+    {
+      "id": "number",
+      "label": "Number",
+      "type": "COMPANY"
+    },
+    {
+      "id": "average",
+      "label": "Average",
+      "type": "COMPANY"
+    },
+    {
+      "id": "grant",
+      "label": "Grant",
+      "type": "COMPANY"
+    },
+    {
+      "id": "date_fair",
+      "label": "Date Fair",
+      "type": "COMPANY"
+    },
+    {
+      "id": "value_per",
+      "label": "Value Per",
+      "type": "COMPANY"
+    },
+    {
+      "id": "balance",
+      "label": "Balance",
+      "type": "COMPANY"
+    },
+    {
+      "id": "based_compensation\nthe",
+      "label": "Based Compensation\nThe",
+      "type": "COMPANY"
+    },
+    {
+      "id": "condensed_consolidated_statements",
+      "label": "Condensed Consolidated Statements",
+      "type": "COMPANY"
+    },
+    {
+      "id": "contingencies\nunconditional_purchase_obligations\nthe_company",
+      "label": "Contingencies\nUnconditional Purchase Obligations\nThe Company",
+      "type": "COMPANY"
+    },
+    {
+      "id": "future",
+      "label": "Future",
+      "type": "COMPANY"
+    },
+    {
+      "id": "thereafter",
+      "label": "Thereafter",
+      "type": "COMPANY"
+    },
+    {
+      "id": "contingencies\nthe_company",
+      "label": "Contingencies\nThe Company",
+      "type": "COMPANY"
+    },
+    {
+      "id": "segment_information\nthe",
+      "label": "Segment Information\nThe",
+      "type": "COMPANY"
+    },
+    {
+      "id": "greater_rest",
+      "label": "Greater Rest",
+      "type": "COMPANY"
+    },
+    {
+      "id": "americas_europe_china_japan_asia_pacific_corporate_total\nnet",
+      "label": "Americas Europe China Japan Asia Pacific Corporate Total\nNet",
+      "type": "COMPANY"
+    },
+    {
+      "id": "general",
+      "label": "General",
+      "type": "COMPANY"
+    },
+    {
+      "id": "corporate_total\nnet",
+      "label": "Corporate Total\nNet",
+      "type": "COMPANY"
+    },
+    {
+      "id": "discu",
+      "label": "Discu",
+      "type": "COMPANY"
+    },
+    {
+      "id": "operations\nthis_item",
+      "label": "Operations\nThis Item",
+      "type": "COMPANY"
+    },
+    {
+      "id": "quarterly_report",
+      "label": "Quarterly Report",
+      "type": "COMPANY"
+    },
+    {
+      "id": "private\nsecurities_litigation_reform_act",
+      "label": "Private\nSecurities Litigation Reform Act",
+      "type": "COMPANY"
+    },
+    {
+      "id": "forward",
+      "label": "Forward",
+      "type": "COMPANY"
+    },
+    {
+      "id": "factors",
+      "label": "Factors",
+      "type": "COMPANY"
+    },
+    {
+      "id": "risk\nfactors",
+      "label": "Risk\nFactors",
+      "type": "RISK_FACTOR"
+    },
+    {
+      "id": "exchange_commission",
+      "label": "Exchange Commission",
+      "type": "COMPANY"
+    },
+    {
+      "id": "available_information\nthe_company",
+      "label": "Available Information\nThe Company",
+      "type": "COMPANY"
+    },
+    {
+      "id": "this",
+      "label": "This",
+      "type": "COMPANY"
+    },
+    {
+      "id": "further",
+      "label": "Further",
+      "type": "COMPANY"
+    },
+    {
+      "id": "business_seasonality",
+      "label": "Business Seasonality",
+      "type": "COMPANY"
+    },
+    {
+      "id": "product_introductions\nthe_company",
+      "label": "Product Introductions\nThe Company",
+      "type": "COMPANY"
+    },
+    {
+      "id": "additionally",
+      "label": "Additionally",
+      "type": "COMPANY"
+    },
+    {
+      "id": "during",
+      "label": "During",
+      "type": "COMPANY"
+    },
+    {
+      "id": "golden_gate",
+      "label": "Golden Gate",
+      "type": "COMPANY"
+    },
+    {
+      "id": "siri",
+      "label": "Siri",
+      "type": "COMPANY"
+    },
+    {
+      "id": "macroeconomic_conditions\nmacroeconomic",
+      "label": "Macroeconomic Conditions\nMacroeconomic",
+      "type": "COMPANY"
+    },
+    {
+      "id": "actions",
+      "label": "Actions",
+      "type": "COMPANY"
+    },
+    {
+      "id": "tariffs",
+      "label": "Tariffs",
+      "type": "COMPANY"
+    },
+    {
+      "id": "other_measures\nbeginning",
+      "label": "Other Measures\nBeginning",
+      "type": "COMPANY"
+    },
+    {
+      "id": "china",
+      "label": "China",
+      "type": "COMPANY"
+    },
+    {
+      "id": "india",
+      "label": "India",
+      "type": "COMPANY"
+    },
+    {
+      "id": "japan",
+      "label": "Japan",
+      "type": "COMPANY"
+    },
+    {
+      "id": "south_korea",
+      "label": "South Korea",
+      "type": "COMPANY"
+    },
+    {
+      "id": "taiwan",
+      "label": "Taiwan",
+      "type": "COMPANY"
+    },
+    {
+      "id": "vietnam",
+      "label": "Vietnam",
+      "type": "COMPANY"
+    },
+    {
+      "id": "european_union",
+      "label": "European Union",
+      "type": "COMPANY"
+    },
+    {
+      "id": "on_january",
+      "label": "On January",
+      "type": "COMPANY"
+    },
+    {
+      "id": "separately",
+      "label": "Separately",
+      "type": "COMPANY"
+    },
+    {
+      "id": "february",
+      "label": "February",
+      "type": "COMPANY"
+    },
+    {
+      "id": "supreme_court",
+      "label": "Supreme Court",
+      "type": "COMPANY"
+    },
+    {
+      "id": "supreme\ncourt",
+      "label": "Supreme\nCourt",
+      "type": "COMPANY"
+    },
+    {
+      "id": "trade",
+      "label": "Trade",
+      "type": "COMPANY"
+    },
+    {
+      "id": "segment_operating_performance\nthe",
+      "label": "Segment Operating Performance\nThe",
+      "type": "COMPANY"
+    },
+    {
+      "id": "change\namericas",
+      "label": "Change\nAmericas",
+      "type": "COMPANY"
+    },
+    {
+      "id": "europe",
+      "label": "Europe",
+      "type": "COMPANY"
+    },
+    {
+      "id": "rest",
+      "label": "Rest",
+      "type": "COMPANY"
+    },
+    {
+      "id": "asia_pacific",
+      "label": "Asia Pacific",
+      "type": "COMPANY"
+    },
+    {
+      "id": "americas\namericas",
+      "label": "Americas\nAmericas",
+      "type": "COMPANY"
+    },
+    {
+      "id": "europe\neurope",
+      "label": "Europe\nEurope",
+      "type": "COMPANY"
+    },
+    {
+      "id": "asia_pacific\nrest",
+      "label": "Asia Pacific\nRest",
+      "type": "COMPANY"
+    },
+    {
+      "id": "services_performance\nthe",
+      "label": "Services Performance\nThe",
+      "type": "COMPANY"
+    },
+    {
+      "id": "pro",
+      "label": "Pro",
+      "type": "COMPANY"
+    },
+    {
+      "id": "mac\nmac",
+      "label": "Mac\nMac",
+      "type": "COMPANY"
+    },
+    {
+      "id": "air",
+      "label": "Air",
+      "type": "COMPANY"
+    },
+    {
+      "id": "year",
+      "label": "Year",
+      "type": "COMPANY"
+    },
+    {
+      "id": "accessories\nwearable",
+      "label": "Accessories\nWearable",
+      "type": "COMPANY"
+    },
+    {
+      "id": "accessories\nwearables",
+      "label": "Accessories\nWearables",
+      "type": "COMPANY"
+    },
+    {
+      "id": "services\nservices",
+      "label": "Services\nServices",
+      "type": "COMPANY"
+    },
+    {
+      "id": "gross_margin\nproducts",
+      "label": "Gross Margin\nProducts",
+      "type": "COMPANY"
+    },
+    {
+      "id": "services_gross_margin\nservices",
+      "label": "Services Gross Margin\nServices",
+      "type": "COMPANY"
+    },
+    {
+      "id": "risk_factors",
+      "label": "Risk Factors",
+      "type": "RISK_FACTOR"
+    },
+    {
+      "id": "operating_expenses\noperating",
+      "label": "Operating Expenses\nOperating",
+      "type": "COMPANY"
+    },
+    {
+      "id": "change\nresearch",
+      "label": "Change\nResearch",
+      "type": "COMPANY"
+    },
+    {
+      "id": "percentage",
+      "label": "Percentage",
+      "type": "COMPANY"
+    },
+    {
+      "id": "development\nresearch",
+      "label": "Development\nResearch",
+      "type": "COMPANY"
+    },
+    {
+      "id": "administrative\nselling",
+      "label": "Administrative\nSelling",
+      "type": "COMPANY"
+    },
+    {
+      "id": "income_taxes\nprovision",
+      "label": "Income Taxes\nProvision",
+      "type": "COMPANY"
+    },
+    {
+      "id": "effective",
+      "label": "Effective",
+      "type": "COMPANY"
+    },
+    {
+      "id": "statutory",
+      "label": "Statutory",
+      "type": "COMPANY"
+    },
+    {
+      "id": "department",
+      "label": "Department",
+      "type": "COMPANY"
+    },
+    {
+      "id": "december",
+      "label": "December",
+      "type": "COMPANY"
+    },
+    {
+      "id": "state_aid_decision",
+      "label": "State Aid Decision",
+      "type": "COMPANY"
+    },
+    {
+      "id": "liquidity",
+      "label": "Liquidity",
+      "type": "COMPANY"
+    },
+    {
+      "id": "capital_resources\nthe_company",
+      "label": "Capital Resources\nThe Company",
+      "type": "COMPANY"
+    },
+    {
+      "id": "manufacturing_purchase_obligations\nthe_company",
+      "label": "Manufacturing Purchase Obligations\nThe Company",
+      "type": "COMPANY"
+    },
+    {
+      "id": "other_purchase_obligations\nthe_company",
+      "label": "Other Purchase Obligations\nThe Company",
+      "type": "COMPANY"
+    },
+    {
+      "id": "tax_cuts",
+      "label": "Tax Cuts",
+      "type": "COMPANY"
+    },
+    {
+      "id": "jobs_act",
+      "label": "Jobs Act",
+      "type": "COMPANY"
+    },
+    {
+      "id": "use_software\nin_september",
+      "label": "Use Software\nIn September",
+      "type": "COMPANY"
+    },
+    {
+      "id": "accounting_standards_update",
+      "label": "Accounting Standards Update",
+      "type": "COMPANY"
+    },
+    {
+      "id": "intangibles",
+      "label": "Intangibles",
+      "type": "COMPANY"
+    },
+    {
+      "id": "goodwill",
+      "label": "Goodwill",
+      "type": "COMPANY"
+    },
+    {
+      "id": "internal",
+      "label": "Internal",
+      "type": "COMPANY"
+    },
+    {
+      "id": "use_software",
+      "label": "Use Software",
+      "type": "COMPANY"
+    },
+    {
+      "id": "subtopic",
+      "label": "Subtopic",
+      "type": "SUBSIDIARY"
+    },
+    {
+      "id": "targeted_improvements",
+      "label": "Targeted Improvements",
+      "type": "COMPANY"
+    },
+    {
+      "id": "accounting",
+      "label": "Accounting",
+      "type": "COMPANY"
+    },
+    {
+      "id": "disaggreg",
+      "label": "Disaggreg",
+      "type": "COMPANY"
+    },
+    {
+      "id": "disaggregation",
+      "label": "Disaggregation",
+      "type": "COMPANY"
+    },
+    {
+      "id": "income_statement_expenses\nin_november",
+      "label": "Income Statement Expenses\nIn November",
+      "type": "COMPANY"
+    },
+    {
+      "id": "income_statement",
+      "label": "Income Statement",
+      "type": "COMPANY"
+    },
+    {
+      "id": "reporting_comprehensive_income",
+      "label": "Reporting Comprehensive Income",
+      "type": "COMPANY"
+    },
+    {
+      "id": "expense_disaggregation_disclosures",
+      "label": "Expense Disaggregation Disclosures",
+      "type": "COMPANY"
+    },
+    {
+      "id": "income_statement_expenses",
+      "label": "Income Statement Expenses",
+      "type": "COMPANY"
+    },
+    {
+      "id": "january",
+      "label": "January",
+      "type": "COMPANY"
+    },
+    {
+      "id": "clarifying",
+      "label": "Clarifying",
+      "type": "COMPANY"
+    },
+    {
+      "id": "effective_date",
+      "label": "Effective Date",
+      "type": "COMPANY"
+    },
+    {
+      "id": "consolidated_statements",
+      "label": "Consolidated Statements",
+      "type": "COMPANY"
+    },
+    {
+      "id": "income_taxes\nin_december",
+      "label": "Income Taxes\nIn December",
+      "type": "COMPANY"
+    },
+    {
+      "id": "income_taxes",
+      "label": "Income Taxes",
+      "type": "COMPANY"
+    },
+    {
+      "id": "topic",
+      "label": "Topic",
+      "type": "COMPANY"
+    },
+    {
+      "id": "improvements",
+      "label": "Improvements",
+      "type": "COMPANY"
+    },
+    {
+      "id": "income_tax_disclosures",
+      "label": "Income Tax Disclosures",
+      "type": "COMPANY"
+    }
+  ],
+  "edges": [],
+  "stats": {
+    "entities": 295,
+    "production_edges": 0,
+    "staging_edges": 0
+  }
+}
