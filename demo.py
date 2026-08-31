@@ -1,31 +1,3 @@
-"""
-End-to-end demo of the EA-RAG pipeline, reproducing the illustrative case
-study from Section VII of the paper:
-
-    "If Supplier Y suffers a plant closure, what is our counterparty credit
-    exposure through Firm X's guarantee of Subsidiary Z's debt?"
-
-Run offline (no API key, no GPU) with the default mock backend:
-
-    python demo.py
-
-Run with a real open-weight model via Ollama (recommended -- see README.md
-"Running with a real open-source LLM" for setup):
-
-    ollama pull gemma3:4b
-    python demo.py --backend ollama --model gemma3:4b
-
-Run with a real open-weight model loaded directly via `transformers`
-(requires: pip install torch transformers accelerate; add `--load-in-4bit`
-on a smaller GPU):
-
-    python demo.py --backend hf --model Qwen/Qwen3-14B
-
-Run with Claude instead (requires: pip install anthropic, and
-ANTHROPIC_API_KEY set):
-
-    python demo.py --backend anthropic --model claude-sonnet-5
-"""
 
 from __future__ import annotations
 
