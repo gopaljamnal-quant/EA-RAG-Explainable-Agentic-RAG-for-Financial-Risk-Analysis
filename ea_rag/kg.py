@@ -35,9 +35,9 @@ class FinancialKnowledgeGraph:
     # ------------------------------------------------------------------
     def add_entity(self, entity: Entity) -> None:
         self._entities[entity.id] = entity
-        for g in (self._production, self._staging):
-            if not g.has_node(entity.id):
-                g.add_node(entity.id, entity=entity)
+        for graph in (self._production, self._staging):
+            if not graph.has_node(entity.id):
+                graph.add_node(entity.id, entity=entity)
 
     def add_relation(self, relation: Relation) -> bool:
         """Add a relation to the staging graph, and to the production graph
@@ -49,16 +49,16 @@ class FinancialKnowledgeGraph:
             if entity_id not in self._entities:
                 raise KeyError(f"Unknown entity id '{entity_id}': add_entity() first")
 
-        self._staging.add_edge(
-            relation.source, relation.target, key=relation.key(), relation=relation
-        )
+        self._add_relation_to_graph(self._staging, relation)
 
         admitted = self._passes_validation_gate(relation)
         if admitted:
-            self._production.add_edge(
-                relation.source, relation.target, key=relation.key(), relation=relation
-            )
+            self._add_relation_to_graph(self._production, relation)
         return admitted
+
+    @staticmethod
+    def _add_relation_to_graph(graph: nx.MultiDiGraph, relation: Relation) -> None:
+        graph.add_edge(relation.source, relation.target, key=relation.key(), relation=relation)
 
     def _passes_validation_gate(self, relation: Relation) -> bool:
         if relation.relation not in HIGH_IMPACT_RELATION_TYPES:
@@ -96,7 +96,7 @@ class FinancialKnowledgeGraph:
         path relevant to a specific claim (see FinancialKnowledgeGraph.
         shortest_path_evidence for that narrower use case).
         """
-        graph = self._production if use_production_only else self._staging
+        graph = self._select_graph(use_production_only)
         visited_nodes: Set[str] = set()
         visited_edges: Dict[str, Relation] = {}
 
@@ -104,22 +104,9 @@ class FinancialKnowledgeGraph:
         visited_nodes.update(frontier)
 
         for _ in range(max_hops):
-            next_frontier: List[str] = []
-            for node in frontier:
-                for _, target, data in graph.out_edges(node, data=True):
-                    rel: Relation = data["relation"]
-                    visited_edges[rel.key()] = rel
-                    if target not in visited_nodes:
-                        visited_nodes.add(target)
-                        next_frontier.append(target)
-                # also traverse guarantee/exposure chains backwards, since
-                # e.g. "who guarantees me" matters as much as "who I guarantee"
-                for source, _, data in graph.in_edges(node, data=True):
-                    rel = data["relation"]
-                    visited_edges[rel.key()] = rel
-                    if source not in visited_nodes:
-                        visited_nodes.add(source)
-                        next_frontier.append(source)
+            next_frontier = self._expand_frontier(
+                graph, frontier, visited_nodes, visited_edges
+            )
             frontier = next_frontier
             if not frontier:
                 break
@@ -138,7 +125,7 @@ class FinancialKnowledgeGraph:
         explainer agent to build the *minimal* provenance subgraph for a
         claim (Section IV.D, "Structural (provenance subgraph)").
         """
-        graph = self._production if use_production_only else self._staging
+        graph = self._select_graph(use_production_only)
         undirected = graph.to_undirected(as_view=True)
         try:
             node_path = nx.shortest_path(undirected, source_id, target_id)
@@ -147,15 +134,9 @@ class FinancialKnowledgeGraph:
 
         relations: List[Relation] = []
         for a, b in zip(node_path[:-1], node_path[1:]):
-            edge_data = None
-            if graph.has_edge(a, b):
-                edge_data = graph.get_edge_data(a, b)
-            elif graph.has_edge(b, a):
-                edge_data = graph.get_edge_data(b, a)
-            if edge_data:
-                # take the first (or highest-confidence) parallel edge
-                best = max(edge_data.values(), key=lambda d: d["relation"].confidence)
-                relations.append(best["relation"])
+            relation = self._best_relation_between(graph, a, b)
+            if relation is not None:
+                relations.append(relation)
 
         entities = [self._entities[n] for n in node_path if n in self._entities]
         return GraphEvidence(entities=entities, relations=relations, seed_entities=[source_id, target_id])
@@ -165,10 +146,10 @@ class FinancialKnowledgeGraph:
         counterfactual sensitivity explanations, e.g. 'if this GUARANTEES
         edge did not exist, would the conclusion change?')."""
         removed = False
-        for g in (self._production, self._staging):
-            for u, v, k in list(g.edges(keys=True)):
+        for graph in (self._production, self._staging):
+            for u, v, k in list(graph.edges(keys=True)):
                 if k == relation_key:
-                    g.remove_edge(u, v, key=k)
+                    graph.remove_edge(u, v, key=k)
                     removed = True
         return removed
 
@@ -178,3 +159,56 @@ class FinancialKnowledgeGraph:
             "production_edges": self._production.number_of_edges(),
             "staging_edges": self._staging.number_of_edges(),
         }
+
+    def _select_graph(self, use_production_only: bool) -> nx.MultiDiGraph:
+        return self._production if use_production_only else self._staging
+
+    def _expand_frontier(
+        self,
+        graph: nx.MultiDiGraph,
+        frontier: List[str],
+        visited_nodes: Set[str],
+        visited_edges: Dict[str, Relation],
+    ) -> List[str]:
+        next_frontier: List[str] = []
+        for node in frontier:
+            self._collect_neighbors(
+                graph.out_edges(node, data=True), 1, visited_nodes, visited_edges, next_frontier
+            )
+            # also traverse guarantee/exposure chains backwards, since
+            # e.g. "who guarantees me" matters as much as "who I guarantee"
+            self._collect_neighbors(
+                graph.in_edges(node, data=True), 0, visited_nodes, visited_edges, next_frontier
+            )
+        return next_frontier
+
+    @staticmethod
+    def _collect_neighbors(
+        edges,
+        candidate_index: int,
+        visited_nodes: Set[str],
+        visited_edges: Dict[str, Relation],
+        next_frontier: List[str],
+    ) -> None:
+        for edge in edges:
+            candidate = edge[candidate_index]
+            relation: Relation = edge[2]["relation"]
+            visited_edges[relation.key()] = relation
+            if candidate not in visited_nodes:
+                visited_nodes.add(candidate)
+                next_frontier.append(candidate)
+
+    def _best_relation_between(
+        self, graph: nx.MultiDiGraph, source_id: str, target_id: str
+    ) -> Optional[Relation]:
+        edge_data = None
+        if graph.has_edge(source_id, target_id):
+            edge_data = graph.get_edge_data(source_id, target_id)
+        elif graph.has_edge(target_id, source_id):
+            edge_data = graph.get_edge_data(target_id, source_id)
+        if not edge_data:
+            return None
+
+        # take the first (or highest-confidence) parallel edge
+        best = max(edge_data.values(), key=lambda data: data["relation"].confidence)
+        return best["relation"]

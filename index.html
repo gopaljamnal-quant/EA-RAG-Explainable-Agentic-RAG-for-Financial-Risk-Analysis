@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EA-RAG: Explainable Agentic RAG for Financial Risk Analysis</title>
+<style>
+  :root {
+    --bg: #f8f9fa;
+    --card-bg: #ffffff;
+    --text: #1f2933;
+    --muted: #5b6b79;
+    --accent: #1f77b4;
+    --border: #dfe3e6;
+    --high: #2ca02c;
+    --medium: #ff7f0e;
+    --low: #d62728;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.5;
+  }
+  header {
+    background: #1f2933;
+    color: #fff;
+    padding: 2rem 1.5rem;
+    text-align: center;
+  }
+  header h1 { margin: 0 0 0.5rem; font-size: 1.8rem; }
+  header p { margin: 0; color: #c9d3db; }
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    position: sticky;
+    top: 0;
+  }
+  nav a { color: var(--accent); text-decoration: none; font-weight: bold; }
+  nav a:hover { text-decoration: underline; }
+  main { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+  section { margin-bottom: 2.5rem; }
+  h2 {
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 0.4rem;
+    font-size: 1.3rem;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  pre {
+    background: #1f2933;
+    color: #e8eef2;
+    padding: 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.9rem;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); font-size: 0.92rem; }
+  th { color: var(--muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.03em; }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: bold;
+    color: #fff;
+  }
+  .badge-high { background: var(--high); }
+  .badge-medium { background: var(--medium); }
+  .badge-low { background: var(--low); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+  .metric { text-align: center; }
+  .metric .value { font-size: 1.6rem; font-weight: bold; color: var(--accent); }
+  .metric .label { color: var(--muted); font-size: 0.85rem; }
+  footer { text-align: center; color: var(--muted); padding: 1.5rem; font-size: 0.85rem; }
+  code { background: #eef1f3; padding: 0.1rem 0.35rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>EA-RAG: Explainable Agentic RAG for Financial Risk Analysis</h1>
+  <p>Knowledge-graph-grounded, multi-agent pipeline for trustworthy financial risk intelligence</p>
+</header>
+
+<nav>
+  <a href="#overview">Overview</a>
+  <a href="#run">How to Run</a>
+  <a href="#structure">Simplified Structure</a>
+  <a href="#pipeline">Pipeline</a>
+  <a href="#sample-output">Sample Output</a>
+</nav>
+
+<main>
+
+  <section id="overview">
+    <h2>Overview</h2>
+    <div class="card">
+      <p>
+        This project is a runnable, dependency-light reference implementation of the paper
+        <em>"Explainable Agentic RAG for Financial Risk Analysis."</em> It extracts a
+        knowledge graph from financial documents, answers risk questions through a
+        verification-gated multi-agent loop, and backs every claim with quantitative
+        models and traceable provenance &mdash; instead of an LLM guessing numbers.
+      </p>
+      <p>
+        This page is a static, single-file summary of the project meant to be readable
+        without running anything. The real interactive graph/metrics dashboards are
+        generated locally by <code>demo_dynamic_kg.py</code> (see below) and are not
+        checked into the repository.
+      </p>
+    </div>
+  </section>
+
+  <section id="run">
+    <h2>How to Run</h2>
+    <div class="card">
+      <pre><code># 1. Create a virtual environment and install dependencies
+python -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Run the offline demo (no API key, no GPU required)
+python demo_dynamic_kg.py --backend mock
+
+# 3. Run the test suite
+pip install pytest
+python -m pytest tests/ -v
+
+# 4. Open the generated visualizations
+#    - kg_graph_improved.html  (interactive knowledge graph)
+#    - kg_metrics.html         (metrics dashboard)</code></pre>
+      <p>See <a href="README.md">README.md</a> for the full guide, including how to
+        switch to a real LLM backend (Ollama, Hugging Face, or Anthropic).</p>
+    </div>
+  </section>
+
+  <section id="structure">
+    <h2>Simplified Structure</h2>
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>File</th><th>Responsibility</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>ea_rag/data_models.py</code></td><td>Core data types: Entity, Relation, Document, Claim, Provenance</td></tr>
+          <tr><td><code>ea_rag/kg.py</code></td><td>Financial knowledge graph: confidence-gated production/staging graphs</td></tr>
+          <tr><td><code>ea_rag/retrieval.py</code></td><td>Dense (TF-IDF) and graph-based passage retrieval</td></tr>
+          <tr><td><code>ea_rag/quant.py</code></td><td>Merton distance-to-default and parametric VaR models</td></tr>
+          <tr><td><code>ea_rag/agents.py</code></td><td>Planner, GraphReasoner, CriticVerifier, and Explainer agents</td></tr>
+          <tr><td><code>ea_rag/orchestrator.py</code></td><td>Verification-gated retry loop (Algorithm&nbsp;1)</td></tr>
+          <tr><td><code>ea_rag/llm.py</code></td><td>Pluggable LLM backends: Mock, Ollama, Hugging Face, Anthropic</td></tr>
+          <tr><td><code>ea_rag/dynamic_kg_extractor.py</code></td><td>Entity/relation extraction from raw document text</td></tr>
+          <tr><td><code>ea_rag/improved_kg_visualizer.py</code></td><td>Generates the interactive graph and metrics dashboard HTML</td></tr>
+          <tr><td><code>pdf_loader.py</code></td><td>Loads PDFs and auto-detects document type</td></tr>
+          <tr><td><code>demo_dynamic_kg.py</code></td><td>End-to-end entry point tying every step together</td></tr>
+          <tr><td><code>tests/test_ea_rag.py</code></td><td>Unit tests for KG gating, Merton model, and orchestration</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="pipeline">
+    <h2>Pipeline</h2>
+    <div class="card">
+      <ol>
+        <li><strong>Load documents</strong> &mdash; PDFs are parsed and tagged by type (10-K, 8-K, earnings, ...).</li>
+        <li><strong>Extract the knowledge graph</strong> &mdash; entities (companies, subsidiaries, risk factors) and relations (SUPPLIES, GUARANTEES, OWNS, EXPOSED_TO) are extracted with a confidence score; high-impact relations require &gt;75% confidence to enter the production graph.</li>
+        <li><strong>Plan &amp; retrieve</strong> &mdash; the query is decomposed into sub-tasks; each sub-task retrieves dense passages and graph evidence.</li>
+        <li><strong>Reason &amp; verify</strong> &mdash; a claim is drafted, checked against the evidence, and retried if confidence is too low.</li>
+        <li><strong>Explain</strong> &mdash; the final answer is returned with full provenance (source documents, graph paths, confidence).</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="sample-output">
+    <h2>Sample Output</h2>
+    <div class="card">
+      <p>Illustrative example of what a completed run reports (actual numbers depend on the documents you provide):</p>
+
+      <div class="grid">
+        <div class="metric"><div class="value">42</div><div class="label">Entities extracted</div></div>
+        <div class="metric"><div class="value">57</div><div class="label">Relations extracted</div></div>
+        <div class="metric"><div class="value">0.81</div><div class="label">Avg. confidence</div></div>
+        <div class="metric"><div class="value">2</div><div class="label">Verified claims</div></div>
+      </div>
+
+      <h3>Verified Claims</h3>
+      <table>
+        <thead>
+          <tr><th>Claim</th><th>Confidence</th><th>Supported</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Apple is exposed to supply-chain risk via its subsidiaries.</td>
+            <td><span class="badge badge-high">0.88</span></td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td>A parent guarantee increases the subsidiary's probability of default.</td>
+            <td><span class="badge badge-medium">0.72</span></td>
+            <td>Yes</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Quantitative Check (Merton Model)</h3>
+      <table>
+        <thead>
+          <tr><th>Scenario</th><th>P[default]</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Baseline</td><td>2.1%</td></tr>
+          <tr><td>Stressed (higher volatility, lower assets)</td><td>6.4%</td></tr>
+          <tr><td>Counterfactual (guarantee released)</td><td>3.8%</td></tr>
+        </tbody>
+      </table>
+
+      <p>Run <code>python demo_dynamic_kg.py --backend mock</code> to generate the real,
+        interactive versions of these outputs (<code>kg_graph_improved.html</code> and
+        <code>kg_metrics.html</code>) from your own documents.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Research/teaching reference code &mdash; see <a href="README.md">README.md</a> for citation, license, and full documentation.
+</footer>
+
+</body>
+</html>

@@ -15,7 +15,6 @@ from typing import List, Optional
 
 from .data_models import (
     Claim,
-    Document,
     GraphEvidence,
     Provenance,
     QuantResult,
@@ -33,6 +32,7 @@ _STOPWORDS = {
 
 
 def _keywords(text: str) -> set:
+    """Keep only content-bearing tokens for lightweight lexical matching."""
     tokens = re.findall(r"[a-zA-Z]+", text.lower())
     return {t for t in tokens if t not in _STOPWORDS and len(t) > 2}
 
@@ -56,8 +56,7 @@ class PlannerAgent:
         self.llm = llm
 
     def decompose(self, query: str, quant_spec: Optional[dict] = None) -> List[SubTask]:
-        segments = re.split(r"\bif\b|;|\. ", query, flags=re.IGNORECASE)
-        segments = [s.strip(" ?.") for s in segments if s.strip(" ?.")]
+        segments = self._split_query(query)
         if not segments:
             segments = [query]
 
@@ -78,13 +77,18 @@ class PlannerAgent:
             )
         return subtasks
 
+    @staticmethod
+    def _split_query(query: str) -> List[str]:
+        segments = re.split(r"\bif\b|;|\. ", query, flags=re.IGNORECASE)
+        return [segment.strip(" ?.") for segment in segments if segment.strip(" ?.")]
+
     def _match_entities(self, text: str) -> List[str]:
         text_lower = text.lower()
-        matches = []
-        for entity in self.kg._entities.values():  # noqa: SLF001 - internal read-only use
-            if entity.name.lower() in text_lower:
-                matches.append(entity.id)
-        return matches
+        return [
+            entity.id
+            for entity in self.kg._entities.values()  # noqa: SLF001 - internal read-only use
+            if entity.name.lower() in text_lower
+        ]
 
 
 # --------------------------------------------------------------------------
@@ -105,10 +109,28 @@ class GraphReasonerAgent:
         graph_evidence: GraphEvidence,
         quant_result: Optional[QuantResult],
     ) -> Claim:
-        clauses = []
         cited_passages = [p.doc_id for p in passages]
         cited_relations = [r.key() for r in graph_evidence.relations]
+        claim_text = self._build_claim_text(subtask, passages, graph_evidence, quant_result)
+        final_text = self._rewrite_claim(subtask, claim_text)
 
+        return Claim(
+            id=f"claim_{subtask.id}",
+            subtask_id=subtask.id,
+            text=final_text,
+            cited_passage_ids=cited_passages,
+            cited_relation_keys=cited_relations,
+            used_quant=quant_result,
+        )
+
+    def _build_claim_text(
+        self,
+        subtask: SubTask,
+        passages: List[RetrievedPassage],
+        graph_evidence: GraphEvidence,
+        quant_result: Optional[QuantResult],
+    ) -> str:
+        clauses = []
         if graph_evidence.relations:
             clauses.append(f"Graph evidence indicates: {graph_evidence.path_description()}.")
         if passages:
@@ -121,10 +143,10 @@ class GraphReasonerAgent:
             clauses.append(quant_result.narrative)
 
         if not clauses:
-            claim_text = f"No sufficient evidence was retrieved to answer: '{subtask.description}'."
-        else:
-            claim_text = " ".join(clauses)
+            return f"No sufficient evidence was retrieved to answer: '{subtask.description}'."
+        return " ".join(clauses)
 
+    def _rewrite_claim(self, subtask: SubTask, claim_text: str) -> str:
         prompt = (
             "You are the Graph-Reasoning agent in a financial risk analysis system. "
             "Rewrite the following evidence synthesis as a single fluent analytical "
@@ -133,16 +155,9 @@ class GraphReasonerAgent:
             f"Sub-task: {subtask.description}\n"
             f"Evidence synthesis:\n{claim_text}"
         )
-        final_text = self.llm.generate(prompt, system="Preserve citations; do not hallucinate.") or claim_text
-
-        return Claim(
-            id=f"claim_{subtask.id}",
-            subtask_id=subtask.id,
-            text=final_text,
-            cited_passage_ids=cited_passages,
-            cited_relation_keys=cited_relations,
-            used_quant=quant_result,
-        )
+        return self.llm.generate(
+            prompt, system="Preserve citations; do not hallucinate."
+        ) or claim_text
 
 
 # --------------------------------------------------------------------------
@@ -240,15 +255,12 @@ class ExplainerAgent:
         # (1) Structural: minimal provenance subgraph is exactly the graph
         # evidence actually cited by the claim (not the full bounded
         # traversal), so a reviewer sees only what supports this claim.
-        cited_keys = set(claim.cited_relation_keys)
-        minimal_relations = [r for r in graph_evidence.relations if r.key() in cited_keys] or graph_evidence.relations
-        involved_entity_ids = {r.source for r in minimal_relations} | {r.target for r in minimal_relations}
-        minimal_entities = [e for e in graph_evidence.entities if e.id in involved_entity_ids] or graph_evidence.entities
+        minimal_relations = self._select_minimal_relations(claim, graph_evidence)
+        minimal_entities = self._select_minimal_entities(graph_evidence, minimal_relations)
 
         # (2) Attributional: span-level citations are simply the retrieved
         # passages actually cited in the claim.
-        cited_passage_ids = set(claim.cited_passage_ids)
-        cited_passages = [p for p in passages if p.doc_id in cited_passage_ids] or passages
+        cited_passages = self._select_cited_passages(claim, passages)
 
         return Provenance(
             claim_id=claim.id,
@@ -261,3 +273,28 @@ class ExplainerAgent:
             # orchestrator.py / demo.py for a worked example).
             counterfactual=counterfactual_narrative,
         )
+
+    @staticmethod
+    def _select_minimal_relations(
+        claim: Claim, graph_evidence: GraphEvidence
+    ) -> List:
+        cited_keys = set(claim.cited_relation_keys)
+        return [
+            relation for relation in graph_evidence.relations if relation.key() in cited_keys
+        ] or graph_evidence.relations
+
+    @staticmethod
+    def _select_minimal_entities(graph_evidence: GraphEvidence, minimal_relations: List) -> List:
+        involved_entity_ids = {r.source for r in minimal_relations} | {
+            r.target for r in minimal_relations
+        }
+        return [
+            entity for entity in graph_evidence.entities if entity.id in involved_entity_ids
+        ] or graph_evidence.entities
+
+    @staticmethod
+    def _select_cited_passages(
+        claim: Claim, passages: List[RetrievedPassage]
+    ) -> List[RetrievedPassage]:
+        cited_passage_ids = set(claim.cited_passage_ids)
+        return [passage for passage in passages if passage.doc_id in cited_passage_ids] or passages

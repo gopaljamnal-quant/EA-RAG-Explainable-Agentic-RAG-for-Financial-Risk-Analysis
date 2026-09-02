@@ -25,6 +25,12 @@ from ea_rag.dynamic_kg_extractor import DynamicKGBuilder
 from ea_rag.improved_kg_visualizer import ImprovedKGVisualizer
 
 
+def _print_step_banner(title: str) -> None:
+    print("\n" + "#" * 80)
+    print(f"# {title}")
+    print("#" * 80)
+
+
 def build_llm(backend: str, model: str | None, load_in_4bit: bool) -> BaseLLM:
     """Build LLM backend."""
     if backend == "mock":
@@ -44,7 +50,7 @@ def build_llm(backend: str, model: str | None, load_in_4bit: bool) -> BaseLLM:
     raise ValueError(f"Unknown backend '{backend}'")
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="EA-RAG Dynamic Demo with IMPROVED Visualization"
     )
@@ -98,23 +104,129 @@ def main() -> None:
     parser.add_argument("--max-retries", type=int, default=2, help="Max retry attempts")
     parser.add_argument("--top-k", type=int, default=3, help="Top-K passages")
     parser.add_argument("--max-hops", type=int, default=3, help="Max graph hops")
+    return parser
+
+
+def _export_kg_json(kg) -> None:
+    print(f"\n💾 Exporting KG data...")
+    kg_dict = {
+        "nodes": [
+            {"id": entity.id, "label": entity.name, "type": entity.type.name}
+            for entity in kg._entities.values()
+        ],
+        "edges": [
+            {
+                "source": source,
+                "target": target,
+                "relation": data["relation"].relation.value,
+                "confidence": data["relation"].confidence,
+                "source_doc": data["relation"].source_doc_id,
+            }
+            for source, target, _, data in kg._production.edges(keys=True, data=True)
+        ],
+        "stats": kg.stats(),
+    }
+    with open("kg_data.json", "w") as f:
+        json.dump(kg_dict, f, indent=2)
+    print(f"   ✓ JSON data: kg_data.json")
+
+
+def _load_documents_for_rag(doc_dir: str):
+    from pdf_loader import load_pdfs
+
+    if not Path(doc_dir).exists():
+        return []
+    try:
+        return load_pdfs(doc_dir, max_docs=10)
+    except ImportError as exc:
+        print(f"⚠️  {exc}")
+        return []
+
+
+def _print_results(results) -> None:
+    print("\n=== EA-RAG Results ===")
+    for vc in results:
+        print(f"\n--- Sub-task: {vc.claim.subtask_id} ---")
+        print(f"Claim       : {vc.claim.text}")
+        print(
+            f"Confidence  : {vc.confidence:.2f}  "
+            f"(supported={vc.supported}, retries={vc.retries_used})"
+        )
+        if vc.provenance:
+            prov = vc.provenance
+            print("Provenance  :")
+            for key, value in prov.to_dict().items():
+                if value:
+                    print(f"    {key}: {value}")
+
+
+def _run_counterfactual_analysis(orchestrator, results) -> None:
+    try:
+        print("\n📊 Running Merton distance-to-default analysis...")
+
+        baseline = merton_distance_to_default(
+            MertonInputs(
+                asset_value=500.0,
+                debt_face_value=350.0,
+                asset_volatility=0.25,
+                risk_free_rate=0.04,
+            )
+        )
+        stressed = merton_distance_to_default(
+            MertonInputs(
+                asset_value=460.0,
+                debt_face_value=350.0,
+                asset_volatility=0.30,
+                risk_free_rate=0.04,
+            )
+        )
+        released = merton_distance_to_default(
+            MertonInputs(
+                asset_value=460.0,
+                debt_face_value=250.0,
+                asset_volatility=0.30,
+                risk_free_rate=0.04,
+            )
+        )
+
+        pd_baseline = baseline.outputs["probability_of_default"]
+        pd_stressed = stressed.outputs["probability_of_default"]
+        pd_released = released.outputs["probability_of_default"]
+        pct_change = (pd_released - pd_stressed) / pd_stressed * 100 if pd_stressed > 0 else 0
+
+        print(f"\nBaseline P[default]          = {pd_baseline:.2%}")
+        print(f"Stressed P[default]          = {pd_stressed:.2%}")
+        print(f"Counterfactual P[default]    = {pd_released:.2%}")
+        print(f"Impact of releasing guarantee: {pct_change:+.1f}%")
+
+        if results and results[-1].supported:
+            counterfactual_text = (
+                f"Baseline P[default] = {pd_baseline:.2%}; "
+                f"stressed P[default] = {pd_stressed:.2%}. "
+                f"If guarantee released (debt 350→250), P[default] = {pd_released:.2%} "
+                f"(change: {pct_change:+.1f}%)."
+            )
+            orchestrator.explain_with_counterfactual(results[-1], counterfactual_text)
+            print(f"\n✓ Counterfactual attached to final claim.")
+    except Exception as exc:
+        print(f"⚠️  Quantitative analysis skipped: {exc}")
+
+
+def main() -> None:
+    parser = build_parser()
 
     args = parser.parse_args()
 
     # ===== Step 1: Dynamic KG Extraction =====
-    print("\n" + "#" * 80)
-    print("# STEP 1: DYNAMIC KNOWLEDGE GRAPH EXTRACTION")
-    print("#" * 80)
+    _print_step_banner("STEP 1: DYNAMIC KNOWLEDGE GRAPH EXTRACTION")
 
     builder = DynamicKGBuilder(llm=build_llm(args.backend, args.model, args.load_in_4bit))
-    kg, extracted_entities, extracted_relations = builder.build_from_directory(
+    kg, _extracted_entities, _extracted_relations = builder.build_from_directory(
         args.doc_dir, min_relation_confidence=args.min_confidence
     )
 
     # ===== Step 2: IMPROVED Interactive Visualization =====
-    print("\n" + "#" * 80)
-    print("# STEP 2: IMPROVED HIERARCHICAL VISUALIZATION")
-    print("#" * 80)
+    _print_step_banner("STEP 2: IMPROVED HIERARCHICAL VISUALIZATION")
 
     visualizer = ImprovedKGVisualizer(kg)
 
@@ -123,11 +235,10 @@ def main() -> None:
 
     # Generate improved visualizations
     print(f"\n🎨 Generating improved visualizations...")
-    # After
     hierarchical_path = visualizer.to_plotly_hierarchical_html(
-        output_path="kg_graph_improved.html",
-        min_confidence=0.9,
-        show_only_types=["COMPANY", "SUBSIDIARY", "RISK_FACTOR"]  # Add this
+        output_path=args.graph_output,
+        min_confidence=args.min_confidence,
+        show_only_types=["COMPANY", "SUBSIDIARY", "RISK_FACTOR"],
     )
     metrics_path = visualizer.to_metrics_dashboard(output_path=args.metrics_output)
 
@@ -140,37 +251,13 @@ def main() -> None:
     print(f"   - Node color = entity type (blue=company, orange=subsidiary, red=risk)")
     print(f"   - Line color = relation type (blue=SUPPLIES, orange=GUARANTEES, etc.)")
 
-    # Export as JSON
-    print(f"\n💾 Exporting KG data...")
-    kg_dict = {
-        "nodes": [
-            {"id": e.id, "label": e.name, "type": e.type.name}
-            for e in kg._entities.values()
-        ],
-        "edges": [
-            {
-                "source": u,
-                "target": v,
-                "relation": data["relation"].relation.value,
-                "confidence": data["relation"].confidence,
-                "source_doc": data["relation"].source_doc_id,
-            }
-            for u, v, _, data in kg._production.edges(keys=True, data=True)
-        ],
-        "stats": kg.stats(),
-    }
-    with open("kg_data.json", "w") as f:
-        json.dump(kg_dict, f, indent=2)
-    print(f"   ✓ JSON data: kg_data.json")
+    _export_kg_json(kg)
 
     # ===== Step 3: RAG Pipeline (Optional) =====
-    print("\n" + "#" * 80)
-    print("# STEP 3: EA-RAG PIPELINE (Optional)")
-    print("#" * 80)
+    _print_step_banner("STEP 3: EA-RAG PIPELINE (Optional)")
 
     # Load documents for retrieval
-    from pdf_loader import load_pdfs
-    documents = load_pdfs(args.doc_dir, max_docs=10) if Path(args.doc_dir).exists() else []
+    documents = _load_documents_for_rag(args.doc_dir)
 
     if not documents:
         print("⚠️  No documents loaded. Skipping RAG pipeline.")
@@ -197,63 +284,13 @@ def main() -> None:
         print("\n" + "-" * 80)
         results = orchestrator.run(args.query)
 
-        print("\n=== EA-RAG Results ===")
-        for vc in results:
-            print(f"\n--- Sub-task: {vc.claim.subtask_id} ---")
-            print(f"Claim       : {vc.claim.text}")
-            print(f"Confidence  : {vc.confidence:.2f}  (supported={vc.supported}, retries={vc.retries_used})")
-            if vc.provenance:
-                prov = vc.provenance
-                print("Provenance  :")
-                for k, v in prov.to_dict().items():
-                    if v:
-                        print(f"    {k}: {v}")
+        _print_results(results)
 
         # ===== Optional: Quantitative Analysis =====
-        print("\n" + "#" * 80)
-        print("# STEP 4: COUNTERFACTUAL SENSITIVITY (MERTON MODEL)")
-        print("#" * 80)
+        _print_step_banner("STEP 4: COUNTERFACTUAL SENSITIVITY (MERTON MODEL)")
+        _run_counterfactual_analysis(orchestrator, results)
 
-        try:
-            print("\n📊 Running Merton distance-to-default analysis...")
-
-            baseline = merton_distance_to_default(
-                MertonInputs(asset_value=500.0, debt_face_value=350.0, asset_volatility=0.25, risk_free_rate=0.04)
-            )
-
-            stressed = merton_distance_to_default(
-                MertonInputs(asset_value=460.0, debt_face_value=350.0, asset_volatility=0.30, risk_free_rate=0.04)
-            )
-
-            released = merton_distance_to_default(
-                MertonInputs(asset_value=460.0, debt_face_value=250.0, asset_volatility=0.30, risk_free_rate=0.04)
-            )
-
-            pd_baseline = baseline.outputs["probability_of_default"]
-            pd_stressed = stressed.outputs["probability_of_default"]
-            pd_released = released.outputs["probability_of_default"]
-            pct_change = (pd_released - pd_stressed) / pd_stressed * 100 if pd_stressed > 0 else 0
-
-            print(f"\nBaseline P[default]          = {pd_baseline:.2%}")
-            print(f"Stressed P[default]          = {pd_stressed:.2%}")
-            print(f"Counterfactual P[default]    = {pd_released:.2%}")
-            print(f"Impact of releasing guarantee: {pct_change:+.1f}%")
-
-            if results and results[-1].supported:
-                counterfactual_text = (
-                    f"Baseline P[default] = {pd_baseline:.2%}; "
-                    f"stressed P[default] = {pd_stressed:.2%}. "
-                    f"If guarantee released (debt 350→250), P[default] = {pd_released:.2%} "
-                    f"(change: {pct_change:+.1f}%)."
-                )
-                orchestrator.explain_with_counterfactual(results[-1], counterfactual_text)
-                print(f"\n✓ Counterfactual attached to final claim.")
-        except Exception as e:
-            print(f"⚠️  Quantitative analysis skipped: {e}")
-
-    print("\n" + "#" * 80)
-    print("# ✅ ANALYSIS COMPLETE")
-    print("#" * 80)
+    _print_step_banner("✅ ANALYSIS COMPLETE")
     print(f"\nNext steps:")
     print(f"  1. 🌐 Open {args.graph_output} in your browser")
     print(f"  2. 📈 View metrics at {args.metrics_output}")
