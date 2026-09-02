@@ -20,8 +20,9 @@ from pathlib import Path
 from ea_rag.llm import BaseLLM, MockLLM
 from ea_rag.orchestrator import EARAGOrchestrator, OrchestratorConfig
 from ea_rag.quant import MertonInputs, merton_distance_to_default
-from dynamic_kg_extractor import DynamicKGBuilder
-from improved_kg_visualizer import ImprovedKGVisualizer
+from ea_rag.dynamic_kg_extractor import DynamicKGBuilder
+
+from ea_rag.improved_kg_visualizer import ImprovedKGVisualizer
 
 
 def build_llm(backend: str, model: str | None, load_in_4bit: bool) -> BaseLLM:

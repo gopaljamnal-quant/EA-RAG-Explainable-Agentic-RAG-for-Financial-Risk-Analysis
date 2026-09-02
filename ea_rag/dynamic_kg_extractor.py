@@ -33,8 +33,6 @@ from ea_rag import (
     Relation,
     RelationType,
 )
-
-
 from ea_rag.llm import BaseLLM, MockLLM
 from pdf_loader import load_pdfs
 

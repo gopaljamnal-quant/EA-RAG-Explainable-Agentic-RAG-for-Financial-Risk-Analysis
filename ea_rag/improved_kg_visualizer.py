@@ -144,6 +144,7 @@ class ImprovedKGVisualizer:
         layers = self._assign_layers(G)
 
         # Within each layer, cluster by entity type
+        layer_x_offset = {}
         for layer_idx, nodes_in_layer in layers.items():
             y = layer_idx * 200  # Vertical spacing
 
@@ -229,7 +230,7 @@ class ImprovedKGVisualizer:
         relation_types_seen = set()
 
         for u, v in G.edges():
-            if u not in pos or v not in pos:
+            if pos[u] is None or pos[v] is None:
                 continue
 
             x0, y0 = pos[u]
@@ -257,7 +258,7 @@ class ImprovedKGVisualizer:
                 hovertext=f"{rel_type}<br>Confidence: {confidence:.2f}",
                 hoverinfo="text",
                 showlegend=rel_type not in relation_types_seen,
-                name=f"{rel_type} (conf={confidence:.2f})",
+                name=f"{rel_type} (conf>{confidence:.2f})",
                 legendgroup="relations",
             )
             edge_traces.append(edge_trace)
@@ -268,8 +269,6 @@ class ImprovedKGVisualizer:
         node_labels_text = []
 
         for node in G.nodes():
-            if node not in pos:
-                continue
             x, y = pos[node]
             node_x.append(x)
             node_y.append(y)
@@ -329,8 +328,8 @@ class ImprovedKGVisualizer:
         layout = go.Layout(
             title=dict(
                 text="<b>Financial Knowledge Graph</b><br>"
-                     f"<sub>Hierarchical layout | Min confidence: {min_confidence:.2f} | "
-                     f"Nodes: {len(G.nodes())} | Edges: {len(G.edges())}</sub>",
+                f"<sub>Hierarchical layout | Min confidence: {min_confidence:.2f} | "
+                f"Nodes: {len(G.nodes())} | Edges: {len(G.edges())}</sub>",
                 x=0.5,
                 xanchor="center",
                 font=dict(size=16),
@@ -344,7 +343,7 @@ class ImprovedKGVisualizer:
             font=dict(family="Arial, sans-serif", size=11),
             height=900,
             width=1400,
-            hovertext="Hover over nodes and edges for details",
+            # hover="Hover over nodes and edges for details",
             legend=dict(
                 yanchor="top",
                 y=0.99,
@@ -481,12 +480,12 @@ class ImprovedKGVisualizer:
         G = nx.DiGraph()
         for entity in self.kg._entities.values():
             G.add_node(entity.id, name=entity.name, type=entity.type.name)
-
+        
         relations_by_type = {}
         for u, v, key, data in self.kg._production.edges(keys=True, data=True):
             rel = data["relation"]
             G.add_edge(u, v, relation=rel.relation.value, confidence=rel.confidence)
-
+            
             rel_key = rel.relation.value
             if rel_key not in relations_by_type:
                 relations_by_type[rel_key] = []
@@ -496,12 +495,12 @@ class ImprovedKGVisualizer:
         print("\n📊 ENTITY ANALYSIS")
         print("-" * 80)
         print(f"Total entities: {len(G.nodes())}")
-
+        
         type_dist = {}
         for node in G.nodes():
             t = G.nodes[node]["type"]
             type_dist[t] = type_dist.get(t, 0) + 1
-
+        
         for t, count in sorted(type_dist.items(), key=lambda x: -x[1]):
             print(f"  {t:20} : {count:3d} entities")
 
@@ -532,24 +531,24 @@ class ImprovedKGVisualizer:
         print(f"  Nodes: {G.number_of_nodes()}")
         print(f"  Edges: {G.number_of_edges()}")
         print(f"  Density: {nx.density(G):.3f}")
-
+        
         if G.number_of_edges() > 0:
             weakly_connected = nx.number_weakly_connected_components(G)
             print(f"  Weakly connected components: {weakly_connected}")
-
+        
         # Confidence distribution
         print("\n📊 CONFIDENCE DISTRIBUTION")
         print("-" * 80)
         confs = [data["confidence"] for _, _, data in G.edges(data=True)]
         if confs:
             print(f"  Min: {min(confs):.3f}")
-            print(f"  Mean: {sum(confs) / len(confs):.3f}")
-            print(f"  Median: {sorted(confs)[len(confs) // 2]:.3f}")
+            print(f"  Mean: {sum(confs)/len(confs):.3f}")
+            print(f"  Median: {sorted(confs)[len(confs)//2]:.3f}")
             print(f"  Max: {max(confs):.3f}")
-
+            
             high_conf = sum(1 for c in confs if c >= 0.8)
             med_conf = sum(1 for c in confs if 0.6 <= c < 0.8)
             low_conf = sum(1 for c in confs if c < 0.6)
-            print(f"\n  High confidence (≥0.8): {high_conf} ({100 * high_conf / len(confs):.1f}%)")
-            print(f"  Medium confidence (0.6-0.8): {med_conf} ({100 * med_conf / len(confs):.1f}%)")
-            print(f"  Low confidence (<0.6): {low_conf} ({100 * low_conf / len(confs):.1f}%)")
+            print(f"\n  High confidence (≥0.8): {high_conf} ({100*high_conf/len(confs):.1f}%)")
+            print(f"  Medium confidence (0.6-0.8): {med_conf} ({100*med_conf/len(confs):.1f}%)")
+            print(f"  Low confidence (<0.6): {low_conf} ({100*low_conf/len(confs):.1f}%)")
