@@ -1,186 +1,302 @@
 # EA-RAG: Explainable Agentic RAG for Financial Risk Analysis
 
-Reference implementation accompanying the paper *"Explainable Agentic RAG for
-Financial Risk Analysis: A Knowledge-Graph-Grounded Multi-Agent Framework for
-Trustworthy LLM-Based Risk Intelligence."*
+Reference implementation accompanying the paper *"Explainable Agentic RAG for Financial Risk Analysis: A Knowledge-Graph-Grounded Multi-Agent Framework for Trustworthy LLM-Based Risk Intelligence."*
 
-This is a runnable, dependency-light implementation of the architecture in
-the paper (Section IV), not a production system. It is meant to make the
-paper's design concrete — every class below maps directly to a component or
-algorithm described in the text — and to give you a base to extend with
-real data, a real LLM, and a real NLI/faithfulness model.
+This is a runnable, dependency-light implementation of the architecture in the paper (Section IV), not a production system. It is meant to make the paper's design concrete — every class below maps directly to a component or algorithm described in the text — and to give you a base to extend with real data, a real LLM, and a real NLI/faithfulness model.
 
 ## Quick start
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python demo.py                  # offline, no API key, no GPU (MockLLM)
-python -m pytest tests/ -v      # requires: pip install pytest
+python demo_dynamic_kg.py --backend mock              # offline, no API key, no GPU
+python -m pytest tests/ -v                             # requires: pip install pytest
 ```
 
-`demo.py --backend mock` (the default) runs entirely offline using `MockLLM`,
-and reproduces the paper's Section VII case study: a supplier plant-closure
-query traced through a two-hop `SUPPLIES` → `GUARANTEES` graph path, backed
-by a Merton distance-to-default calculation, with a genuine (recomputed, not
-invented) counterfactual: "if the guarantee were released, how would the
-stressed probability of default change?"
+## Main Demo: `demo_dynamic_kg.py`
 
-**Important: what `MockLLM` is, precisely.** It is not a language model. It
-calls no model, local or remote. `agents.py` only ever asks the LLM to
-rephrase evidence it has already assembled in Python (retrieved passages,
-graph facts, quant tool output) into fluent prose while preserving citation
-markers — `MockLLM.generate()` just returns that pre-assembled text
-unchanged. This means the demo's *orchestration logic* (retrieval, graph
-traversal, verification, retries, provenance) is 100% real and tested;
-only the final sentence-level phrasing is templated rather than generated.
-For a real experiment you want an actual model doing that phrasing (and,
-if you enable LLM-based planning, actual planning) — see below.
+**Dynamic Knowledge Graph Extraction + Orchestration + Interactive Visualization**
 
-## Running with a real open-source LLM
+This is the primary entry point. It demonstrates the full EA-RAG pipeline with automatic entity/relation extraction from financial documents:
 
-Two backends are included, covering the two common ways people actually run
-open-weight models. Either one is a drop-in replacement for `MockLLM` —
-every agent talks only to `BaseLLM.generate()`, so nothing else in the
-pipeline changes.
+```bash
+# 1. Setup (one-time)
+mkdir -p financial_documents
+# Add your financial PDFs to financial_documents/ directory
+
+# 2. Run with mock LLM (offline, instant)
+python demo_dynamic_kg.py --backend mock
+
+# 3. View outputs
+# - kg_graph_improved.html          (interactive hierarchical knowledge graph)
+# - kg_metrics.html                 (metrics dashboard: entity/relation distributions, confidence analysis)
+# - Console output                  (verified claims, provenance, confidence scores)
+```
+
+### What it does:
+
+1. **Document Loading** (`pdf_loader.py`): Loads PDFs from `./financial_documents/` and auto-detects document type (10-K, 8-K, earnings, etc.)
+
+2. **Dynamic KG Extraction** (`dynamic_kg_extractor.py`):
+   - Chunks documents semantically using TF-IDF
+   - Extracts entities: companies, subsidiaries, risk factors
+   - Extracts relations: SUPPLIES, GUARANTEES, OWNS, EXPOSED_TO using pattern matching
+   - Confidence-gates high-impact relations (GUARANTEES, OWNS require >75% confidence for production graph)
+   - Creates FinancialKnowledgeGraph with staging/production separation
+
+3. **EA-RAG Orchestration** (Algorithm 1):
+   - Plans multi-step queries decomposing complex risk questions
+   - Retrieves relevant dense passages + graph evidence
+   - Runs quantitative models (Merton distance-to-default, parametric VaR)
+   - Verifies claims against evidence with confidence scoring
+   - Retries on low confidence (verification-gated loop)
+   - Generates explanations with full provenance
+
+4. **Interactive Visualization** (`improved_kg_visualizer.py`):
+   - Hierarchical layout (readable, not spring-force chaos)
+   - Node size by connectivity, color by entity type
+   - Edge width/dash style by relation confidence
+   - Hover for details, filter by confidence/type
+   - Metrics dashboard: entity distributions, relation statistics, confidence analysis
+
+### Command-line Options:
+
+```bash
+# Mock backend (offline, fastest)
+python demo_dynamic_kg.py --backend mock
+
+# With Ollama (local LLM)
+python demo_dynamic_kg.py --backend ollama --model gemma3:4b
+
+# With Hugging Face (direct model loading)
+python demo_dynamic_kg.py --backend hf --model Qwen/Qwen3-14B --load-in-4bit
+
+# With Anthropic (Claude API)
+python demo_dynamic_kg.py --backend anthropic --model claude-sonnet-5
+
+# Customize output paths
+python demo_dynamic_kg.py --backend mock \
+  --graph-output my_kg.html \
+  --metrics-output my_metrics.html
+
+# Adjust KG confidence threshold
+python demo_dynamic_kg.py --backend mock --min-confidence 0.8
+
+# Orchestration tuning
+python demo_dynamic_kg.py --backend mock --tau 0.7 --max-retries 3 --top-k 5
+```
+
+## Running with a Real LLM
+
+Two backends are included for production use. Either one is a drop-in replacement for `MockLLM` — every agent talks only to `BaseLLM.generate()`.
 
 ### Option A — Ollama (recommended: easiest setup, no CUDA config)
 
 ```bash
 # 1. Install Ollama: https://ollama.com/download
-# 2. Pull an open-weight model, e.g. Gemma 3 4B (~3.3GB, runs fine CPU-only
-#    on a laptop -- this is EA-RAG's default):
+# 2. Pull an open-weight model (Gemma 3 4B is the default)
 ollama pull gemma3:4b
-# 3. Run the demo against it:
+# 3. Run
 pip install requests
-python demo.py --backend ollama --model gemma3:4b
+python demo_dynamic_kg.py --backend ollama --model gemma3:4b
 ```
 
-`OllamaLLM` (in `ea_rag/llm.py`) talks to Ollama's local `/api/chat`
-endpoint over HTTP. Note on the `system` message: Gemma's own chat
-template has no native system role, but Ollama's packaged template for
-`gemma3` merges a system message into the leading user turn automatically,
-so `OllamaLLM` sends it as a normal `{"role": "system", ...}` message and
-it works correctly without any special-casing in this codebase. For models
-that *do* support a thinking mode (Qwen3, DeepSeek-R1 distills, etc.),
-`OllamaLLM` also strips `<think>...</think>` blocks automatically and only
-requests thinking mode when you pass `enable_thinking=True` — irrelevant
-for Gemma 3, which has no thinking mode, so leave it at the default False.
+**Notes:**
+- `OllamaLLM` talks to Ollama's local `/api/chat` endpoint over HTTP
+- For models with thinking mode (Qwen3, DeepSeek-R1), set `enable_thinking=True` in the code
+- On memory-constrained systems, set `OLLAMA_KV_CACHE_TYPE=q8_0` before `ollama serve`
 
-If you're on a memory-constrained laptop and see out-of-memory errors even
-with the 4B model, Ollama's KV-cache for Gemma 3's sliding-window attention
-can be larger than expected on some versions; setting the environment
-variable `OLLAMA_KV_CACHE_TYPE=q8_0` (or `q4_0`) before `ollama serve`
-reduces that footprint.
-
-### Option B — Hugging Face `transformers` (more control, needs a GPU for anything beyond small models)
+### Option B — Hugging Face `transformers` (more control, needs a GPU)
 
 ```bash
+# Install dependencies
 pip install torch transformers accelerate
-python demo.py --backend hf --model Qwen/Qwen3-14B --load-in-4bit
+
+# Run with a local model
+python demo_dynamic_kg.py --backend hf --model Qwen/Qwen3-14B --load-in-4bit
 ```
 
-`HuggingFaceLLM` loads the model and tokenizer directly and applies the
-model's chat template. `--load-in-4bit` needs `bitsandbytes` and a CUDA GPU.
+**Notes:**
+- `--load-in-4bit` requires `bitsandbytes` and a CUDA GPU
+- Works on CPU for small models (<7B) but will be slow
+- Applies the model's native chat template automatically
 
-### Which model to use
+### Which model to use?
 
-"Best open-source LLM" changes almost monthly and open-model leaderboards
-are a heavily marketed space — be skeptical of any single "#1" claim,
-including the one implied by this package's default. `gemma3:4b` (used as
-the Ollama default above) is a reasonable, well-supported choice for
-laptop-only use with no GPU — not a claim that it's unconditionally the
-strongest option. See the "Why Gemma 3 4B is the default" note at the top
-of `ea_rag/llm.py` for current alternatives (similarly-sized options like
-`qwen3:4b`/`llama3.2:3b`; larger MoE models such as recent Qwen, DeepSeek,
-Llama, GLM, or Kimi releases if you have more hardware or a hosted
-endpoint) and check current benchmarks yourself before committing to one
-for a real study.
+`gemma3:4b` is a reasonable laptop-only choice (no GPU). For alternatives and benchmarks, see the comments in `ea_rag/llm.py`. Update as your preferred open-source LLM evolves.
 
 ### Mixing models per agent
 
-Every agent takes its own `llm` instance if you construct them directly
-instead of via `EARAGOrchestrator` — e.g. give the critic/verifier a
-reasoning-tuned model for stronger entailment checking while the planner
-and explainer use a faster, cheaper model:
+For production workflows, assign different models to different agents:
 
 ```python
 from ea_rag.llm import OllamaLLM
 from ea_rag.agents import CriticVerifierAgent, GraphReasonerAgent
+from ea_rag.orchestrator import EARAGOrchestrator
 
 fast_llm = OllamaLLM(model="gemma3:4b")
-reasoning_llm = OllamaLLM(model="qwen3:14b", enable_thinking=True)  # bigger model, only if you have the hardware
+reasoning_llm = OllamaLLM(model="qwen3:14b", enable_thinking=True)
 
-reasoner = GraphReasonerAgent(llm=fast_llm)
-# CriticVerifierAgent in this reference implementation uses a lexical/
-# structural heuristic rather than an LLM call at all (see below) --
-# swap in an LLM- or NLI-based verifier here if you upgrade it.
+reasoner = GraphReasonerAgent(llm=reasoning_llm)  # slower but stronger reasoning
+# critic uses heuristic (no LLM call) by default; upgrade in code if needed
+
+orchestrator = EARAGOrchestrator(kg=kg, documents=docs, llm=fast_llm)
 ```
 
-## Package layout → paper section
+## Architecture Overview
 
-| File | Paper section | What it implements |
-|---|---|---|
-| `ea_rag/data_models.py` | III (Problem Formulation) | `Entity`, `Relation`, `Document`, `Claim`, `Provenance` = the formal $\mathcal{G}$, $\mathcal{D}$, $y_i$, $p_i$ objects |
-| `ea_rag/kg.py` | IV.B (FKG construction) | Confidence-gated production/staging graph, bounded traversal, minimal-path provenance extraction |
-| `ea_rag/retrieval.py` | IV.C | `DenseRetriever` (TF-IDF stand-in for embeddings), `GraphRetriever` |
-| `ea_rag/quant.py` | IV.C (Quantitative agent) | Merton (1974) distance-to-default, parametric VaR — deterministic tools, not LLM-generated numbers |
+### Package Layout → Paper Section
+
+| File | Paper Section | What it Implements |
+|------|------|---|
+| `ea_rag/data_models.py` | III (Problem Formulation) | `Entity`, `Relation`, `Document`, `Claim`, `Provenance` = formal $\mathcal{G}$, $\mathcal{D}$, $y_i$, $p_i$ |
+| `ea_rag/kg.py` | IV.B (FKG construction) | Confidence-gated production/staging graph, bounded traversal, minimal-path provenance |
+| `ea_rag/retrieval.py` | IV.C | `DenseRetriever` (TF-IDF stand-in), `GraphRetriever` |
+| `ea_rag/quant.py` | IV.C (Quantitative agent) | Merton (1974) distance-to-default, parametric VaR |
 | `ea_rag/agents.py` | IV.C, IV.D | `PlannerAgent`, `GraphReasonerAgent`, `CriticVerifierAgent`, `ExplainerAgent` |
-| `ea_rag/orchestrator.py` | Algorithm 1 | The verification-gated retry loop, line for line |
-| `ea_rag/llm.py` | — | Pluggable LLM backend: offline `MockLLM` (default), open-weight `OllamaLLM` / `HuggingFaceLLM`, or closed-source `AnthropicLLM` |
-| `demo.py` | VII (Case study) | Full worked example; `--backend {mock,ollama,hf,anthropic}` |
-| `tests/test_ea_rag.py` | — | Unit tests for the KG gating logic, Merton model, the end-to-end orchestrator (supported + unsupported paths), and the `OllamaLLM` request/response handling (against a local mock HTTP server) |
+| `ea_rag/orchestrator.py` | Algorithm 1 | Verification-gated retry loop, line-for-line |
+| `ea_rag/llm.py` | — | Pluggable backends: `MockLLM`, `OllamaLLM`, `HuggingFaceLLM`, `AnthropicLLM` |
+| `dynamic_kg_extractor.py` | IV.B (Knowledge graph construction) | `SemanticDocumentIndex`, `EntityRelationExtractor`, `DynamicKGBuilder` |
+| `improved_kg_visualizer.py` | — | Hierarchical layout visualization, metrics dashboard |
+| `pdf_loader.py` | — | PDF document loading with auto-detection of document type |
+| `demo_dynamic_kg.py` | — | End-to-end example: PDFs → extraction → orchestration → visualization |
+| `tests/test_ea_rag.py` | — | Unit tests: KG gating, Merton model, orchestrator, LLM handling |
 
-## What's genuinely implemented vs. simplified
+## What's Genuinely Implemented vs. Simplified
 
-**Genuinely implemented and tested:**
-- Confidence-gated knowledge graph construction (high-impact relation types
-  require either a confidence threshold or human sign-off before entering
-  the production graph used for final claims).
-- Bounded-hop graph traversal and minimal-path provenance extraction.
-- The full verification-gated orchestration loop from Algorithm 1, including
-  the retry mechanism and the "flag as unsupported rather than fabricate"
-  behavior when no evidence clears the threshold (see
-  `test_orchestrator_flags_unsupported_claim_without_fabricating`).
-- Closed-form Merton distance-to-default and parametric VaR.
-- A genuine counterfactual: `demo.py` actually re-runs the Merton model with
-  a perturbed input (guarantee released) and reports the real percentage
-  change — it does not print a canned number.
+### Genuinely Implemented and Tested
 
-**Simplified, and clearly marked in code for where to upgrade:**
-- `CriticVerifierAgent` uses a transparent lexical-overlap + structural-
-  coverage heuristic instead of a trained NLI/entailment model. Swap
-  `_textual_entailment` for a cross-encoder NLI model or the RAGAS
-  faithfulness metric for production use.
-- `MockLLM` templates the final claim/explanation phrasing rather than
-  generating it, so the whole pipeline runs with no API key and no GPU.
-  Pass an `OllamaLLM`, `HuggingFaceLLM`, or `AnthropicLLM` instance (see
-  `ea_rag/llm.py` and "Running with a real open-source LLM" above) to use
-  a real model instead — no other code changes needed, since every agent
-  only talks to the `BaseLLM.generate()` interface.
-- `PlannerAgent.decompose` uses a simple conjunction-splitting + entity-name-
-  matching heuristic rather than an LLM-generated plan; see the class
-  docstring for where to add an LLM-based planning prompt.
-- `DenseRetriever` uses TF-IDF rather than a neural embedding model, purely
-  to avoid a heavyweight dependency in a reference implementation.
+- ✅ **Confidence-gated KG construction**: High-impact relations (GUARANTEES, OWNS) require >75% confidence or human sign-off for production graph
+- ✅ **Bounded-hop graph traversal**: Minimal-path provenance extraction for explainability
+- ✅ **Full verification-gated orchestration**: Algorithm 1 line-for-line, including retry mechanism and "flag unsupported rather than fabricate" behavior
+- ✅ **Closed-form quantitative models**: Merton distance-to-default, parametric VaR (not LLM-generated numbers)
+- ✅ **Dynamic entity/relation extraction**: From unstructured financial documents with confidence scoring
+- ✅ **Interactive visualizations**: Hierarchical layout, confidence-weighted edges, metrics dashboard
 
-## Extending this for real use
+### Simplified (Marked for Upgrade)
 
-1. Replace `DenseRetriever`'s TF-IDF vectorizer with a real embedding model
-   and vector index (e.g. FAISS, pgvector) — it only needs to keep returning
-   `RetrievedPassage` objects.
-2. Replace `CriticVerifierAgent._textual_entailment` with a real faithfulness
-   / NLI scorer.
-3. Feed `FinancialKnowledgeGraph` from your actual filings pipeline (Exhibit
-   21 ownership data, 8-K guarantee disclosures, NLP-extracted supply-chain
-   relations) instead of the three hand-coded entities in `demo.py`.
-4. Pass `OllamaLLM(model="gemma3:4b")`, `HuggingFaceLLM(model_name="Qwen/Qwen3-14B")`,
-   `AnthropicLLM(model="claude-sonnet-5")`, or another backend you implement
-   against `BaseLLM`, to `EARAGOrchestrator` for real generation.
-5. Tune `OrchestratorConfig.tau` and `max_retries` per risk tier, as
-   discussed in the paper's Results and Discussion section.
+- ⚠️ **Entity/Relation Extraction**: Uses regex patterns + heuristics. Upgrade to:
+  - Named Entity Recognition (spaCy, Hugging Face NER)
+  - Specialized relation extraction models
+  - Confidence calibration on labeled data
 
-## License / status
+- ⚠️ **CriticVerifierAgent**: Uses lexical-overlap heuristic instead of trained NLI model. Swap `_textual_entailment()` for:
+  - Cross-encoder NLI model (e.g., DPR, Sentence-BERT)
+  - RAGAS faithfulness metric
 
-Research/teaching reference code, provided as-is to accompany the paper
-draft. Not validated for use in a live risk-management workflow.
+- ⚠️ **PlannerAgent.decompose()**: Conjunction-splitting heuristic instead of LLM-based planning. See class docstring for where to add LLM prompting.
+
+- ⚠️ **DenseRetriever**: Uses TF-IDF (lightweight). Upgrade to:
+  - Sentence embeddings (sentence-transformers)
+  - Dense vector index (FAISS, pgvector, Pinecone)
+
+- ⚠️ **MockLLM**: Templates final phrasing instead of generating. For real experiments, pass `OllamaLLM`, `HuggingFaceLLM`, or `AnthropicLLM` to `EARAGOrchestrator` — no other code changes needed.
+
+## Extending for Production Use
+
+1. **Embeddings**: Replace `DenseRetriever`'s TF-IDF with a neural embedding model (sentence-transformers) and vector index (FAISS, pgvector). Interface stays the same (`retrieve()` returns `RetrievedPassage` objects).
+
+2. **NLI/Faithfulness**: Replace `CriticVerifierAgent._textual_entailment()` with a real cross-encoder or RAGAS score.
+
+3. **Entity/Relation Extraction**: Feed `FinancialKnowledgeGraph` from your actual pipeline:
+   - NLP-extracted supply-chain relations
+   - 8-K guarantee disclosures
+   - Exhibit 21 ownership structures
+   - Third-party data APIs
+
+4. **LLM Backend**: Upgrade from `MockLLM` to real generation:
+   ```python
+   llm = OllamaLLM(model="gemma3:4b")           # Local
+   llm = HuggingFaceLLM(model_name="Qwen/Qwen3-14B")  # Local with GPU
+   llm = AnthropicLLM(model="claude-sonnet-5")  # API
+   orchestrator = EARAGOrchestrator(..., llm=llm)
+   ```
+
+5. **Tuning**: Adjust `OrchestratorConfig.tau` (confidence threshold) and `max_retries` per risk tier, as discussed in the paper's Results & Discussion section.
+
+## Project Structure
+
+```
+ea_rag/                           # Core library
+├── __init__.py
+├── data_models.py               # Entity, Relation, Document, Claim, Provenance
+├── kg.py                        # FinancialKnowledgeGraph (production/staging)
+├── retrieval.py                 # DenseRetriever, GraphRetriever
+├── quant.py                     # Merton, VaR
+├── agents.py                    # Planner, GraphReasoner, Critic, Explainer
+├── orchestrator.py              # Algorithm 1 implementation
+└── llm.py                       # BaseLLM, MockLLM, OllamaLLM, HuggingFaceLLM, AnthropicLLM
+
+demo_dynamic_kg.py               # Main entry point: extraction + orchestration + visualization
+dynamic_kg_extractor.py          # SemanticDocumentIndex, EntityRelationExtractor, DynamicKGBuilder
+improved_kg_visualizer.py        # ImprovedKGVisualizer (hierarchical layout, metrics)
+pdf_loader.py                    # load_pdfs() utility
+
+tests/
+└── test_ea_rag.py               # Unit tests
+
+README.md                         # This file
+requirements.txt                 # Dependencies
+```
+
+## Installation & Quick Run
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/gopaljamnal-quant/EA-RAG-Explainable-Agentic-RAG-for-Financial-Risk-Analysis.git
+cd EA-RAG-Explainable-Agentic-RAG-for-Financial-Risk-Analysis
+
+# 2. Virtual environment
+python -m venv .venv
+source .venv/bin/activate           # On Windows: .venv\Scripts\activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Run (no PDFs needed for first test)
+python demo_dynamic_kg.py --backend mock
+
+# 5. With your own PDFs
+mkdir -p financial_documents
+# Copy your financial PDFs here
+python demo_dynamic_kg.py --backend mock
+
+# 6. Open the visualizations
+# - kg_graph_improved.html in your browser
+# - kg_metrics.html for metrics dashboard
+```
+
+## Running Tests
+
+```bash
+pip install pytest
+pytest tests/ -v
+```
+
+Tests cover:
+- KG confidence-gating logic
+- Merton distance-to-default calculations
+- End-to-end orchestrator (supported + unsupported paths)
+- LLM backend request/response handling
+
+## License & Status
+
+Research/teaching reference code, provided as-is to accompany the paper draft. Not validated for use in a live risk-management workflow.
+
+---
+
+## Citation
+
+If you use this code, please cite the paper:
+
+```bibtex
+@article{jamnal2024earag,
+  title={Explainable Agentic RAG for Financial Risk Analysis: A Knowledge-Graph-Grounded Multi-Agent Framework for Trustworthy LLM-Based Risk Intelligence},
+  author={Jamnal, Gopal Singh},
+  year={2024}
+}
+```
+
+## Contributing
+
+For bug reports, feature requests, or contributions, please open an issue or pull request.
