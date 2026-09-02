@@ -4,6 +4,45 @@ Reference implementation accompanying the paper *"Explainable Agentic RAG for Fi
 
 This is a runnable, dependency-light implementation of the architecture in the paper (Section IV), not a production system. It is meant to make the paper's design concrete — every class below maps directly to a component or algorithm described in the text — and to give you a base to extend with real data, a real LLM, and a real NLI/faithfulness model.
 
+A static, single-page summary of the project (overview, run instructions, and a
+sample of the risk-analysis output) is available in [`index.html`](index.html) —
+open it directly in a browser, no server required.
+
+## How to run
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python demo_dynamic_kg.py --backend mock              # offline, no API key, no GPU
+python -m pytest tests/ -v                             # requires: pip install pytest
+```
+
+The mock run generates two local files that are not checked into the repo
+(see `.gitignore`): `kg_graph_improved.html` (interactive graph) and
+`kg_metrics.html` (metrics dashboard). Open either in a browser to explore.
+
+## Simplified Structure
+
+```
+ea_rag/                  # Core library (see table below for what each file does)
+demo_dynamic_kg.py        # Main entry point: extraction + orchestration + visualization
+dynamic_kg_extractor.py   # Entity/relation extraction from document text
+pdf_loader.py             # load_pdfs() utility
+index.html                # Static single-page project summary
+tests/test_ea_rag.py      # Unit tests
+```
+
+| File | Responsibility |
+|------|---|
+| `ea_rag/data_models.py` | `Entity`, `Relation`, `Document`, `Claim`, `Provenance` data types |
+| `ea_rag/kg.py` | Confidence-gated production/staging knowledge graph |
+| `ea_rag/retrieval.py` | `DenseRetriever` (TF-IDF), `GraphRetriever` |
+| `ea_rag/quant.py` | Merton distance-to-default, parametric VaR |
+| `ea_rag/agents.py` | `PlannerAgent`, `GraphReasonerAgent`, `CriticVerifierAgent`, `ExplainerAgent` |
+| `ea_rag/orchestrator.py` | Verification-gated retry loop (Algorithm 1) |
+| `ea_rag/llm.py` | Pluggable backends: `MockLLM`, `OllamaLLM`, `HuggingFaceLLM`, `AnthropicLLM` |
+| `ea_rag/improved_kg_visualizer.py` | Hierarchical graph + metrics dashboard HTML generation |
+
 ## Quick start
 
 ```bash

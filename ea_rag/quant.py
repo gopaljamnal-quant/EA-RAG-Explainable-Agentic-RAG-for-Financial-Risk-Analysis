@@ -22,6 +22,9 @@ from scipy.stats import norm
 
 from .data_models import QuantResult
 
+MERTON_TOOL_NAME = "merton_distance_to_default"
+PARAMETRIC_VAR_TOOL_NAME = "parametric_var"
+
 
 @dataclass
 class MertonInputs:
@@ -39,13 +42,7 @@ def merton_distance_to_default(inputs: MertonInputs) -> QuantResult:
     Distance-to-default = d2
     Risk-neutral probability of default = N(-d2)
     """
-    V, D, sigma_V, r, T = (
-        inputs.asset_value,
-        inputs.debt_face_value,
-        inputs.asset_volatility,
-        inputs.risk_free_rate,
-        inputs.horizon_years,
-    )
+    V, D, sigma_V, r, T = _unpack_merton_inputs(inputs)
     if V <= 0 or D <= 0 or sigma_V <= 0 or T <= 0:
         raise ValueError("Merton model inputs must be strictly positive.")
 
@@ -58,8 +55,14 @@ def merton_distance_to_default(inputs: MertonInputs) -> QuantResult:
         f"given assets={V:,.1f}, debt={D:,.1f}, asset vol={sigma_V:.1%}, r={r:.1%}."
     )
     return QuantResult(
-        tool="merton_distance_to_default",
-        inputs={"asset_value": V, "debt_face_value": D, "asset_volatility": sigma_V, "risk_free_rate": r, "horizon_years": T},
+        tool=MERTON_TOOL_NAME,
+        inputs={
+            "asset_value": V,
+            "debt_face_value": D,
+            "asset_volatility": sigma_V,
+            "risk_free_rate": r,
+            "horizon_years": T,
+        },
         outputs={"distance_to_default": d2, "probability_of_default": pd},
         narrative=narrative,
     )
@@ -88,7 +91,7 @@ def parametric_var(
         f"on a {portfolio_value:,.1f} position (ann. vol={volatility:.1%})."
     )
     return QuantResult(
-        tool="parametric_var",
+        tool=PARAMETRIC_VAR_TOOL_NAME,
         inputs={
             "portfolio_value": portfolio_value,
             "expected_return": expected_return,
@@ -101,14 +104,24 @@ def parametric_var(
     )
 
 
+def _unpack_merton_inputs(inputs: MertonInputs):
+    return (
+        inputs.asset_value,
+        inputs.debt_face_value,
+        inputs.asset_volatility,
+        inputs.risk_free_rate,
+        inputs.horizon_years,
+    )
+
+
 class QuantitativeAgent:
     """Dispatches a SubTask.quant_spec to the appropriate deterministic tool."""
 
     def run(self, quant_spec: dict) -> QuantResult:
         tool = quant_spec.get("tool")
         params = quant_spec.get("params", {})
-        if tool == "merton_distance_to_default":
+        if tool == MERTON_TOOL_NAME:
             return merton_distance_to_default(MertonInputs(**params))
-        if tool == "parametric_var":
+        if tool == PARAMETRIC_VAR_TOOL_NAME:
             return parametric_var(**params)
         raise ValueError(f"Unknown quant tool '{tool}'")

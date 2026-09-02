@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# Generated demo outputs (recreated by `python demo_dynamic_kg.py`)
+kg_graph_improved.html
+kg_metrics.html
+kg_data.json
+kg_export.jsonld
+
+# IDE
+.idea/
+
+# OS
+.DS_Store

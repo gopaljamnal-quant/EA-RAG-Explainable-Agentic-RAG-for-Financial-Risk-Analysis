@@ -17,8 +17,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, asdict
-from pathlib import Path
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
 
 import networkx as nx
@@ -35,6 +34,12 @@ from ea_rag import (
 )
 from ea_rag.llm import BaseLLM, MockLLM
 from pdf_loader import load_pdfs
+
+MIN_CHUNK_TEXT_LENGTH = 50
+SEARCH_SCORE_FLOOR = 0.05
+MAX_SOURCE_DOCUMENTS = 10
+KG_MIN_HIGH_IMPACT_CONFIDENCE = 0.75
+RELATION_NARRATIVE_CONTEXT = 50
 
 
 # ============================================================================
@@ -87,7 +92,7 @@ class SemanticDocumentIndex:
 
         for i in range(0, len(text), stride):
             chunk_text = text[i : i + self.chunk_size]
-            if len(chunk_text.strip()) > 50:  # Skip tiny chunks
+            if len(chunk_text.strip()) > MIN_CHUNK_TEXT_LENGTH:  # Skip tiny chunks
                 chunk = DocumentChunk(
                     doc_id=doc.id,
                     chunk_idx=i // stride,
@@ -107,7 +112,7 @@ class SemanticDocumentIndex:
         scores = cosine_similarity(query_vec, self._matrix).ravel()
         top_indices = scores.argsort()[-top_k:][::-1]
 
-        return [self.chunks[i] for i in top_indices if scores[i] > 0.05]
+        return [self.chunks[i] for i in top_indices if scores[i] > SEARCH_SCORE_FLOOR]
 
 
 # ============================================================================
@@ -189,6 +194,12 @@ class EntityRelationExtractor:
         r"(\w+(?:\s+\w+)*)\s+(?:is\s+)?exposed\s+to\s+(\w+(?:\s+\w+)*)",
         r"(\w+(?:\s+\w+)*)\s+(?:faces|has)\s+(?:exposure|risk)\s+from\s+(\w+(?:\s+\w+)*)",
     ]
+    RELATION_PATTERNS = (
+        (RelationType.SUPPLIES, SUPPLY_PATTERNS),
+        (RelationType.GUARANTEES, GUARANTEE_PATTERNS),
+        (RelationType.OWNS, OWNS_PATTERNS),
+        (RelationType.EXPOSED_TO, EXPOSED_TO_PATTERNS),
+    )
 
     def __init__(self, llm: Optional[BaseLLM] = None):
         self.llm = llm or MockLLM()
@@ -203,36 +214,8 @@ class EntityRelationExtractor:
         Heuristic approach: match company/subsidiary/risk keywords + NER patterns.
         """
         print("\n📍 Extracting entities...")
-        entity_counts: Dict[str, Set[str]] = {}  # entity_name -> set of source chunks
-
-        for chunk in chunks:
-            # Simple heuristic: look for capitalized phrases near company keywords
-            text_lower = chunk.text.lower()
-            sentences = chunk.text.split(". ")
-
-            for sentence in sentences[:max_per_chunk]:
-                # Find capitalized phrases
-                for match in re.finditer(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b", sentence):
-                    phrase = match.group(0)
-                    entity_type = self._infer_entity_type(phrase, sentence)
-
-                    if entity_type:
-                        if phrase not in entity_counts:
-                            entity_counts[phrase] = set()
-                        entity_counts[phrase].add(chunk.key())
-
-        # Create entities with source tracking
-        for entity_name, source_chunks in entity_counts.items():
-            entity_type = self._infer_entity_type(
-                entity_name, ""
-            )  # Re-infer for safety
-            if entity_type:
-                self.entities[entity_name] = ExtractedEntity(
-                    name=entity_name,
-                    type=entity_type,
-                    source_chunks=list(source_chunks),
-                    confidence=min(0.95, 0.7 + 0.05 * len(source_chunks)),
-                )
+        entity_counts = self._collect_entity_occurrences(chunks, max_per_chunk)
+        self._finalize_entities(entity_counts)
 
         print(f"  ✓ Found {len(self.entities)} unique entities")
         return self.entities
@@ -247,34 +230,40 @@ class EntityRelationExtractor:
         print("\n🔗 Extracting relations...")
 
         for chunk in chunks:
-            text = chunk.text
-
-            # Try SUPPLIES
-            self._extract_by_pattern(
-                text, self.SUPPLY_PATTERNS, RelationType.SUPPLIES, chunk, entity_names
-            )
-
-            # Try GUARANTEES
-            self._extract_by_pattern(
-                text, self.GUARANTEE_PATTERNS, RelationType.GUARANTEES, chunk, entity_names
-            )
-
-            # Try OWNS
-            self._extract_by_pattern(
-                text, self.OWNS_PATTERNS, RelationType.OWNS, chunk, entity_names
-            )
-
-            # Try EXPOSED_TO
-            self._extract_by_pattern(
-                text,
-                self.EXPOSED_TO_PATTERNS,
-                RelationType.EXPOSED_TO,
-                chunk,
-                entity_names,
-            )
+            for relation_type, patterns in self.RELATION_PATTERNS:
+                self._extract_by_pattern(
+                    chunk.text, patterns, relation_type, chunk, entity_names
+                )
 
         print(f"  ✓ Found {len(self.relations)} relations")
         return self.relations
+
+    def _collect_entity_occurrences(
+        self, chunks: List[DocumentChunk], max_per_chunk: int
+    ) -> Dict[str, Set[str]]:
+        entity_counts: Dict[str, Set[str]] = {}
+        for chunk in chunks:
+            for sentence in chunk.text.split(". ")[:max_per_chunk]:
+                for phrase in self._iter_candidate_entities(sentence):
+                    if self._infer_entity_type(phrase, sentence):
+                        entity_counts.setdefault(phrase, set()).add(chunk.key())
+        return entity_counts
+
+    @staticmethod
+    def _iter_candidate_entities(sentence: str):
+        for match in re.finditer(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b", sentence):
+            yield match.group(0)
+
+    def _finalize_entities(self, entity_counts: Dict[str, Set[str]]) -> None:
+        for entity_name, source_chunks in entity_counts.items():
+            entity_type = self._infer_entity_type(entity_name, "")  # Re-infer for safety
+            if entity_type:
+                self.entities[entity_name] = ExtractedEntity(
+                    name=entity_name,
+                    type=entity_type,
+                    source_chunks=list(source_chunks),
+                    confidence=min(0.95, 0.7 + 0.05 * len(source_chunks)),
+                )
 
     def _infer_entity_type(self, phrase: str, context: str) -> Optional[EntityType]:
         """Heuristic entity type classification."""
@@ -319,18 +308,33 @@ class EntityRelationExtractor:
                     and target_entity in entity_names
                     and source_entity != target_entity
                 ):
-                    # Confidence based on pattern quality + context
-                    confidence = 0.75 + (0.1 if chunk.source_type == "10-K" else 0.0)
-
-                    relation = ExtractedRelation(
-                        source_entity=source_entity,
-                        relation_type=relation_type,
-                        target_entity=target_entity,
-                        confidence=min(0.95, confidence),
-                        source_chunk=chunk.key(),
-                        narrative=f"Extracted from {chunk.source_type}: ...{text[max(0, match.start()-50):match.end()+50]}...",
+                    self.relations.append(
+                        self._build_relation(
+                            source_entity, target_entity, relation_type, chunk, text, match
+                        )
                     )
-                    self.relations.append(relation)
+
+    def _build_relation(
+        self,
+        source_entity: str,
+        target_entity: str,
+        relation_type: RelationType,
+        chunk: DocumentChunk,
+        text: str,
+        match: re.Match[str],
+    ) -> ExtractedRelation:
+        confidence = 0.75 + (0.1 if chunk.source_type == "10-K" else 0.0)
+        return ExtractedRelation(
+            source_entity=source_entity,
+            relation_type=relation_type,
+            target_entity=target_entity,
+            confidence=min(0.95, confidence),
+            source_chunk=chunk.key(),
+            narrative=(
+                f"Extracted from {chunk.source_type}: "
+                f"...{text[max(0, match.start() - RELATION_NARRATIVE_CONTEXT):match.end() + RELATION_NARRATIVE_CONTEXT]}..."
+            ),
+        )
 
 
 # ============================================================================
@@ -360,13 +364,7 @@ class DynamicKGBuilder:
         print("DYNAMIC KNOWLEDGE GRAPH BUILDER")
         print("=" * 80)
 
-        # Step 1: Load documents
-        print(f"\n📂 Loading documents from '{doc_dir}'...")
-        try:
-            documents = load_pdfs(doc_dir, max_docs=10)
-        except ImportError as e:
-            print(f"⚠️  {e} — using empty document list")
-            documents = []
+        documents = self._load_documents(doc_dir)
 
         if not documents:
             print("⚠️  No documents found. Creating empty KG.")
@@ -386,53 +384,98 @@ class DynamicKGBuilder:
         entity_names = {e.name for e in entities.values()}
         relations = self.extractor.extract_relations(chunks, entity_names)
 
-        # Step 5: Build KG with confidence gating
+        kg, admitted_count, staged_count = self._build_knowledge_graph(
+            entities, relations, min_relation_confidence
+        )
+        print(
+            f"\n✓ KG Built: {admitted_count} relations in production, {staged_count} in staging"
+        )
+        print(f"  {kg.stats()}")
+        return kg, entities, relations
+
+    def _load_documents(self, doc_dir: str) -> List[Document]:
+        print(f"\n📂 Loading documents from '{doc_dir}'...")
+        try:
+            return load_pdfs(doc_dir, max_docs=MAX_SOURCE_DOCUMENTS)
+        except ImportError as exc:
+            print(f"⚠️  {exc} — using empty document list")
+            return []
+
+    def _build_knowledge_graph(
+        self,
+        entities: Dict[str, ExtractedEntity],
+        relations: List[ExtractedRelation],
+        min_relation_confidence: float,
+    ) -> Tuple[FinancialKnowledgeGraph, int, int]:
         print("\n🏗️  Constructing knowledge graph...")
-        kg = FinancialKnowledgeGraph(min_confidence_high_impact=0.75)
+        kg = FinancialKnowledgeGraph(
+            min_confidence_high_impact=KG_MIN_HIGH_IMPACT_CONFIDENCE
+        )
+        entity_id_map = self._add_entities_to_kg(kg, entities)
+        admitted_count, staged_count = self._add_relations_to_kg(
+            kg, relations, entity_id_map, min_relation_confidence
+        )
+        return kg, admitted_count, staged_count
 
-        # Add entities
-        entity_id_map = {}  # name -> id
+    def _add_entities_to_kg(
+        self, kg: FinancialKnowledgeGraph, entities: Dict[str, ExtractedEntity]
+    ) -> Dict[str, str]:
+        entity_id_map = {}
         for name, entity_data in entities.items():
-            ent_id = name.lower().replace(" ", "_")
-            entity_id_map[name] = ent_id
-            entity = Entity(id=ent_id, name=name, type=entity_data.type)
-            kg.add_entity(entity)
-            print(f"  ✓ Entity: {name} ({entity_data.type.name}) [conf={entity_data.confidence:.2f}]")
+            entity_id = name.lower().replace(" ", "_")
+            entity_id_map[name] = entity_id
+            kg.add_entity(Entity(id=entity_id, name=name, type=entity_data.type))
+            print(
+                f"  ✓ Entity: {name} ({entity_data.type.name}) "
+                f"[conf={entity_data.confidence:.2f}]"
+            )
+        return entity_id_map
 
-        # Add relations (with confidence filtering)
+    def _add_relations_to_kg(
+        self,
+        kg: FinancialKnowledgeGraph,
+        relations: List[ExtractedRelation],
+        entity_id_map: Dict[str, str],
+        min_relation_confidence: float,
+    ) -> Tuple[int, int]:
         admitted_count = 0
         staged_count = 0
         for rel_data in relations:
             if rel_data.confidence < min_relation_confidence:
-                continue  # Skip low-confidence extractions
-
-            source_id = entity_id_map.get(rel_data.source_entity)
-            target_id = entity_id_map.get(rel_data.target_entity)
-            if not source_id or not target_id:
                 continue
 
-            relation = Relation(
-                source=source_id,
-                relation=rel_data.relation_type,
-                target=target_id,
-                confidence=rel_data.confidence,
-                source_doc_id=rel_data.source_chunk.split("_")[0],
-                extraction_method="llm_extraction",
-            )
+            relation = self._to_kg_relation(rel_data, entity_id_map)
+            if relation is None:
+                continue
 
             admitted = kg.add_relation(relation)
             if admitted:
                 admitted_count += 1
                 print(
-                    f"  ✓ Relation: {rel_data.source_entity} --{rel_data.relation_type.value}--> {rel_data.target_entity} → production"
+                    f"  ✓ Relation: {rel_data.source_entity} "
+                    f"--{rel_data.relation_type.value}--> {rel_data.target_entity} → production"
                 )
             else:
                 staged_count += 1
+        return admitted_count, staged_count
 
-        print(f"\n✓ KG Built: {admitted_count} relations in production, {staged_count} in staging")
-        print(f"  {kg.stats()}")
+    @staticmethod
+    def _to_kg_relation(
+        rel_data: ExtractedRelation, entity_id_map: Dict[str, str]
+    ) -> Optional[Relation]:
+        source_id = entity_id_map.get(rel_data.source_entity)
+        target_id = entity_id_map.get(rel_data.target_entity)
+        if not source_id or not target_id:
+            return None
 
-        return kg, entities, relations
+        return Relation(
+            source=source_id,
+            relation=rel_data.relation_type,
+            target=target_id,
+            confidence=rel_data.confidence,
+            source_doc_id=rel_data.source_chunk.split("_")[0],
+            extraction_method="llm_extraction",
+        )
 
 
 # ============================================================================
@@ -493,31 +536,13 @@ class KGVisualizer:
             "@graph": [],
         }
 
-        # Add entities
-        for entity in self.kg._entities.values():
-            ld_context["@graph"].append(
-                {
-                    "@id": f"http://example.com/entity/{entity.id}",
-                    "@type": "Entity",
-                    "name": entity.name,
-                    "type": entity.type.value,
-                }
-            )
-
-        # Add relations from production graph
-        for u, v, key, data in self.kg._production.edges(keys=True, data=True):
-            rel: Relation = data["relation"]
-            ld_context["@graph"].append(
-                {
-                    "@id": f"http://example.com/relation/{rel.key()}",
-                    "@type": "Relation",
-                    "source": f"http://example.com/entity/{u}",
-                    "relation": rel.relation.value,
-                    "target": f"http://example.com/entity/{v}",
-                    "confidence": rel.confidence,
-                    "source_doc": rel.source_doc_id,
-                }
-            )
+        ld_context["@graph"].extend(
+            self._json_ld_entity(entity) for entity in self.kg._entities.values()
+        )
+        ld_context["@graph"].extend(
+            self._json_ld_relation(u, v, data["relation"])
+            for u, v, _, data in self.kg._production.edges(keys=True, data=True)
+        )
 
         # Write to file
         with open(output_path, "w") as f:
@@ -525,6 +550,27 @@ class KGVisualizer:
 
         print(f"✓ Exported JSON-LD to {output_path}")
         return output_path
+
+    @staticmethod
+    def _json_ld_entity(entity: Entity) -> Dict[str, str]:
+        return {
+            "@id": f"http://example.com/entity/{entity.id}",
+            "@type": "Entity",
+            "name": entity.name,
+            "type": entity.type.value,
+        }
+
+    @staticmethod
+    def _json_ld_relation(source: str, target: str, rel: Relation) -> Dict[str, object]:
+        return {
+            "@id": f"http://example.com/relation/{rel.key()}",
+            "@type": "Relation",
+            "source": f"http://example.com/entity/{source}",
+            "relation": rel.relation.value,
+            "target": f"http://example.com/entity/{target}",
+            "confidence": rel.confidence,
+            "source_doc": rel.source_doc_id,
+        }
 
     def to_plotly_html(self, output_path: str = "kg_graph.html", use_staging: bool = False) -> str:
         """
@@ -542,30 +588,10 @@ class KGVisualizer:
         # Use spring layout for better visualization
         pos = nx.spring_layout(nx_graph, k=2, iterations=50, seed=42)
 
-        # Extract node and edge data
-        node_x, node_y, node_text, node_color = [], [], [], []
-        entity_type_colors = {
-            "COMPANY": "#1f77b4",  # blue
-            "SUBSIDIARY": "#ff7f0e",  # orange
-            "RISK_FACTOR": "#d62728",  # red
-            "INSTRUMENT": "#2ca02c",  # green
-            "PERSON": "#9467bd",  # purple
-            "REGULATORY_EVENT": "#8c564b",  # brown
-        }
-
-        for node in nx_graph.nodes():
-            x, y = pos[node]
-            node_x.append(x)
-            node_y.append(y)
-
-            node_label = nx_graph.nodes[node].get("label", node)
-            node_type = nx_graph.nodes[node].get("type", "COMPANY")
-            node_text.append(
-                f"<b>{node_label}</b><br>Type: {node_type}<br>ID: {node}"
-            )
-            node_color.append(entity_type_colors.get(node_type, "#cccccc"))
-
-        # Create scatter plot for nodes
+        entity_type_colors = self._entity_type_colors()
+        node_x, node_y, node_text, node_color = self._build_node_plot_data(
+            nx_graph, pos, entity_type_colors
+        )
         nodes_trace = go.Scatter(
             x=node_x,
             y=node_y,
@@ -581,19 +607,7 @@ class KGVisualizer:
             ),
         )
 
-        # Create lines for edges
-        edge_x, edge_y, edge_text = [], [], []
-        for edge in nx_graph.edges():
-            x0, y0 = pos[edge[0]]
-            x1, y1 = pos[edge[1]]
-            edge_x.extend([x0, x1, None])
-            edge_y.extend([y0, y1, None])
-
-            # Relation label
-            rel_type = nx_graph[edge[0]][edge[1]].get("relation", "")
-            confidence = nx_graph[edge[0]][edge[1]].get("confidence", 0)
-            edge_text.append(f"{rel_type}<br>Conf: {confidence:.2f}")
-
+        edge_x, edge_y, edge_text = self._build_edge_plot_data(nx_graph, pos)
         edges_trace = go.Scatter(
             x=edge_x,
             y=edge_y,
@@ -639,6 +653,52 @@ class KGVisualizer:
         fig.write_html(output_path)
         print(f"✓ Interactive graph saved to {output_path}")
         return output_path
+
+    @staticmethod
+    def _entity_type_colors() -> Dict[str, str]:
+        return {
+            "COMPANY": "#1f77b4",  # blue
+            "SUBSIDIARY": "#ff7f0e",  # orange
+            "RISK_FACTOR": "#d62728",  # red
+            "INSTRUMENT": "#2ca02c",  # green
+            "PERSON": "#9467bd",  # purple
+            "REGULATORY_EVENT": "#8c564b",  # brown
+        }
+
+    @staticmethod
+    def _build_node_plot_data(
+        nx_graph: nx.DiGraph,
+        pos: Dict[str, Tuple[float, float]],
+        entity_type_colors: Dict[str, str],
+    ) -> Tuple[List[float], List[float], List[str], List[str]]:
+        node_x, node_y, node_text, node_color = [], [], [], []
+        for node in nx_graph.nodes():
+            x, y = pos[node]
+            node_x.append(x)
+            node_y.append(y)
+
+            node_label = nx_graph.nodes[node].get("label", node)
+            node_type = nx_graph.nodes[node].get("type", "COMPANY")
+            node_text.append(f"<b>{node_label}</b><br>Type: {node_type}<br>ID: {node}")
+            node_color.append(entity_type_colors.get(node_type, "#cccccc"))
+        return node_x, node_y, node_text, node_color
+
+    @staticmethod
+    def _build_edge_plot_data(
+        nx_graph: nx.DiGraph,
+        pos: Dict[str, Tuple[float, float]],
+    ) -> Tuple[List[float], List[float], List[str]]:
+        edge_x, edge_y, edge_text = [], [], []
+        for source, target in nx_graph.edges():
+            x0, y0 = pos[source]
+            x1, y1 = pos[target]
+            edge_x.extend([x0, x1, None])
+            edge_y.extend([y0, y1, None])
+
+            rel_type = nx_graph[source][target].get("relation", "")
+            confidence = nx_graph[source][target].get("confidence", 0)
+            edge_text.append(f"{rel_type}<br>Conf: {confidence:.2f}")
+        return edge_x, edge_y, edge_text
 
     def to_dict(self) -> Dict:
         """Export KG as nested dict (nodes + edges)."""

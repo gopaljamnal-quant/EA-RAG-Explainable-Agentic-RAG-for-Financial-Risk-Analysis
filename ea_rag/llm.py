@@ -5,6 +5,14 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 
+def _build_messages(prompt: str, system: Optional[str] = None):
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    return messages
+
+
 class BaseLLM(ABC):
     @abstractmethod
     def generate(self, prompt: str, system: Optional[str] = None, max_tokens: int = 512) -> str:
@@ -104,13 +112,8 @@ class HuggingFaceLLM(BaseLLM):
         )
 
     def generate(self, prompt: str, system: Optional[str] = None, max_tokens: int = 512) -> str:
-        messages = []
-        if system:
-            messages.append({"role": "system", "content": system})
-        messages.append({"role": "user", "content": prompt})
-
         text = self.tokenizer.apply_chat_template(
-            messages,
+            _build_messages(prompt, system),
             tokenize=False,
             add_generation_prompt=True,
             enable_thinking=self.enable_thinking,
@@ -169,27 +172,10 @@ class OllamaLLM(BaseLLM):
         except ImportError as exc:  # pragma: no cover
             raise ImportError("OllamaLLM requires: pip install requests") from exc
 
-        messages = []
-        if system:
-            messages.append({"role": "system", "content": system})
-        messages.append({"role": "user", "content": prompt})
-
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "stream": False,
-            "options": {"num_predict": max_tokens},
-        }
-        if self.enable_thinking:
-            # Only sent for models that actually support it; omitted
-            # entirely otherwise (e.g. for Gemma 3, which has no thinking
-            # mode and no need to receive this field).
-            payload["think"] = True
-
         try:
             response = requests.post(
                 f"{self.host}/api/chat",
-                json=payload,
+                json=self._build_payload(prompt, system, max_tokens),
                 timeout=self.timeout,
             )
         except requests.exceptions.ConnectionError as exc:
@@ -203,6 +189,22 @@ class OllamaLLM(BaseLLM):
         data = response.json()
         content = data.get("message", {}).get("content", "")
         return _strip_thinking(content)
+
+    def _build_payload(
+        self, prompt: str, system: Optional[str], max_tokens: int
+    ) -> dict:
+        payload = {
+            "model": self.model,
+            "messages": _build_messages(prompt, system),
+            "stream": False,
+            "options": {"num_predict": max_tokens},
+        }
+        if self.enable_thinking:
+            # Only sent for models that actually support it; omitted
+            # entirely otherwise (e.g. for Gemma 3, which has no thinking
+            # mode and no need to receive this field).
+            payload["think"] = True
+        return payload
 
 
 class AnthropicLLM(BaseLLM):
@@ -231,6 +233,6 @@ class AnthropicLLM(BaseLLM):
             model=self.model,
             max_tokens=max_tokens,
             system=system or "",
-            messages=[{"role": "user", "content": prompt}],
+            messages=_build_messages(prompt),
         )
         return "".join(block.text for block in message.content if getattr(block, "type", "") == "text")

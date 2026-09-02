@@ -115,13 +115,13 @@ class GraphEvidence:
     def path_description(self) -> str:
         if not self.relations:
             return "(no graph path found)"
-        parts = []
         id_to_name = {e.id: e.name for e in self.entities}
-        for r in self.relations:
-            src = id_to_name.get(r.source, r.source)
-            tgt = id_to_name.get(r.target, r.target)
-            parts.append(f"{src} --[{r.relation.value}]--> {tgt}")
-        return "; ".join(parts)
+        return "; ".join(
+            f"{id_to_name.get(relation.source, relation.source)} "
+            f"--[{relation.relation.value}]--> "
+            f"{id_to_name.get(relation.target, relation.target)}"
+            for relation in self.relations
+        )
 
 
 @dataclass
@@ -155,11 +155,15 @@ class Provenance:
         return {
             "claim_id": self.claim_id,
             "entities": [str(e) for e in self.entities],
-            "relations": [r.key() + f" (conf={r.confidence:.2f}, src={r.source_doc_id})" for r in self.relations],
+            "relations": [self._format_relation(r) for r in self.relations],
             "passages": [f"[{p.doc_id}] {p.text[:120]}..." for p in self.passages],
             "quant": self.quant.narrative if self.quant else None,
             "counterfactual": self.counterfactual,
         }
+
+    @staticmethod
+    def _format_relation(relation: Relation) -> str:
+        return relation.key() + f" (conf={relation.confidence:.2f}, src={relation.source_doc_id})"
 
 
 @dataclass

@@ -35,21 +35,26 @@ class DenseRetriever:
             return []
         query_vec = self._vectorizer.transform([query])
         scores = cosine_similarity(query_vec, self._matrix).ravel()
-        ranked = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
+        ranked = self._ranked_indices(scores)
         results: List[RetrievedPassage] = []
         for idx in ranked[:top_k]:
             if scores[idx] < min_score:
                 continue
-            doc = self.documents[idx]
-            results.append(
-                RetrievedPassage(
-                    doc_id=doc.id,
-                    text=doc.text,
-                    score=float(scores[idx]),
-                    source_type=doc.source_type,
-                )
-            )
+            results.append(self._to_passage(idx, float(scores[idx])))
         return results
+
+    @staticmethod
+    def _ranked_indices(scores) -> List[int]:
+        return sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
+
+    def _to_passage(self, idx: int, score: float) -> RetrievedPassage:
+        doc = self.documents[idx]
+        return RetrievedPassage(
+            doc_id=doc.id,
+            text=doc.text,
+            score=score,
+            source_type=doc.source_type,
+        )
 
 
 class GraphRetriever:
@@ -58,15 +63,18 @@ class GraphRetriever:
         self.max_hops = max_hops
 
     def retrieve(self, subtask: SubTask) -> GraphEvidence:
-        seeds = [
-            eid
-            for name_or_id in subtask.seed_entities
-            for eid in [self._resolve(name_or_id)]
-            if eid is not None
-        ]
+        seeds = self._resolve_seed_entities(subtask.seed_entities)
         if not seeds:
             return GraphEvidence(entities=[], relations=[], seed_entities=[])
         return self.kg.bounded_traversal(seeds, max_hops=self.max_hops)
+
+    def _resolve_seed_entities(self, seed_entities: List[str]) -> List[str]:
+        return [
+            entity_id
+            for name_or_id in seed_entities
+            for entity_id in [self._resolve(name_or_id)]
+            if entity_id is not None
+        ]
 
     def _resolve(self, name_or_id: str):
         if self.kg.get_entity(name_or_id) is not None:

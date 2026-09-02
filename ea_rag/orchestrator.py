@@ -69,49 +69,75 @@ class EARAGOrchestrator:
         results: List[VerifiedClaim] = []
 
         for subtask in subtasks:
-            retries = 0
-            claim = None
-            confidence = 0.0
-            passages, graph_evidence, quant_result = [], None, None
-
-            while True:
-                passages = (
-                    self.dense_retriever.retrieve(subtask.description, top_k=self.config.top_k_passages)
-                    if subtask.needs_dense
-                    else []
-                )
-                graph_evidence = (
-                    self.graph_retriever.retrieve(subtask)
-                    if subtask.needs_graph
-                    else self.graph_retriever.retrieve(subtask)  # empty seeds -> empty evidence
-                )
-                quant_result = (
-                    self.quant_agent.run(subtask.quant_spec)
-                    if subtask.needs_quant and subtask.quant_spec
-                    else None
-                )
-
-                claim = self.reasoner.synthesize(subtask, passages, graph_evidence, quant_result)
-                confidence = self.critic.verify(claim, passages, graph_evidence)
-
-                retries += 1
-                if confidence >= self.config.tau or retries > self.config.max_retries:
-                    break
-                # A real re-retrieval step would widen top_k / hop budget or
-                # reformulate the sub-query here; for this reference
-                # implementation, widening top_k is enough to demonstrate
-                # the retry mechanism.
-                self.config.top_k_passages += 2
-
-            if confidence >= self.config.tau:
-                provenance = self.explainer.explain(claim, passages, graph_evidence, quant_result)
-                results.append(VerifiedClaim(claim=claim, confidence=confidence, supported=True,
-                                              provenance=provenance, retries_used=retries - 1))
-            else:
-                results.append(VerifiedClaim(claim=claim, confidence=confidence, supported=False,
-                                              provenance=None, retries_used=retries - 1))
+            results.append(self._run_subtask(subtask))
 
         return results
+
+    def _run_subtask(self, subtask) -> VerifiedClaim:
+        retries = 0
+        claim = None
+        confidence = 0.0
+        passages, graph_evidence, quant_result = [], None, None
+
+        while True:
+            passages, graph_evidence, quant_result = self._retrieve_evidence(subtask)
+            claim = self.reasoner.synthesize(subtask, passages, graph_evidence, quant_result)
+            confidence = self.critic.verify(claim, passages, graph_evidence)
+
+            retries += 1
+            if confidence >= self.config.tau or retries > self.config.max_retries:
+                break
+            self._widen_retrieval()
+
+        return self._build_verified_claim(
+            claim, confidence, retries, passages, graph_evidence, quant_result
+        )
+
+    def _retrieve_evidence(self, subtask):
+        passages = (
+            self.dense_retriever.retrieve(
+                subtask.description, top_k=self.config.top_k_passages
+            )
+            if subtask.needs_dense
+            else []
+        )
+        graph_evidence = self.graph_retriever.retrieve(subtask)
+        quant_result = (
+            self.quant_agent.run(subtask.quant_spec)
+            if subtask.needs_quant and subtask.quant_spec
+            else None
+        )
+        return passages, graph_evidence, quant_result
+
+    def _widen_retrieval(self) -> None:
+        # A real re-retrieval step would widen top_k / hop budget or
+        # reformulate the sub-query here; for this reference
+        # implementation, widening top_k is enough to demonstrate
+        # the retry mechanism.
+        self.config.top_k_passages += 2
+
+    def _build_verified_claim(
+        self,
+        claim,
+        confidence: float,
+        retries: int,
+        passages,
+        graph_evidence,
+        quant_result,
+    ) -> VerifiedClaim:
+        supported = confidence >= self.config.tau
+        provenance = (
+            self.explainer.explain(claim, passages, graph_evidence, quant_result)
+            if supported
+            else None
+        )
+        return VerifiedClaim(
+            claim=claim,
+            confidence=confidence,
+            supported=supported,
+            provenance=provenance,
+            retries_used=retries - 1,
+        )
 
     def explain_with_counterfactual(
         self, verified_claim: VerifiedClaim, counterfactual_narrative: str
