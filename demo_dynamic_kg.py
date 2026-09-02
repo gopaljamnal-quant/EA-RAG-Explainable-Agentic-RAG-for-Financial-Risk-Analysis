@@ -122,9 +122,11 @@ def main() -> None:
 
     # Generate improved visualizations
     print(f"\n🎨 Generating improved visualizations...")
+    # After
     hierarchical_path = visualizer.to_plotly_hierarchical_html(
-        output_path=args.graph_output,
-        min_confidence=args.min_confidence
+        output_path="kg_graph_improved.html",
+        min_confidence=0.9,
+        show_only_types=["COMPANY", "SUBSIDIARY", "RISK_FACTOR"]  # Add this
     )
     metrics_path = visualizer.to_metrics_dashboard(output_path=args.metrics_output)
 

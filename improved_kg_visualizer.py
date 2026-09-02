@@ -145,7 +145,7 @@ class ImprovedKGVisualizer:
 
         # Within each layer, cluster by entity type
         layer_x_offset = {}
-        for layer_idx, nodes_in_layer in enumerate(layers.items()):
+        for layer_idx, nodes_in_layer in layers.items():
             y = layer_idx * 200  # Vertical spacing
 
             # Group by type within layer
@@ -343,7 +343,7 @@ class ImprovedKGVisualizer:
             font=dict(family="Arial, sans-serif", size=11),
             height=900,
             width=1400,
-            hovertext="Hover over nodes and edges for details",
+            # hover="Hover over nodes and edges for details",
             legend=dict(
                 yanchor="top",
                 y=0.99,
