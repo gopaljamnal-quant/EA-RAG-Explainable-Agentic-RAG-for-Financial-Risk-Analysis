@@ -28,19 +28,19 @@ class ImprovedKGVisualizer:
         self.kg = kg
 
     def to_plotly_hierarchical_html(
-            self,
-            output_path: str = "kg_graph_improved.html",
-            min_confidence: float = 0.0,
-            show_only_types: Optional[List[str]] = None,
+        self,
+        output_path: str = "kg_graph_improved.html",
+        min_confidence: float = 0.0,
+        show_only_types: Optional[List[str]] = None,
     ) -> str:
         """
         Generate hierarchical, readable KG visualization.
-
+        
         Args:
             output_path: HTML output file
             min_confidence: Filter relations below this confidence
             show_only_types: Filter to specific entity types (None = show all)
-
+        
         Returns:
             Path to output file
         """
@@ -64,7 +64,7 @@ class ImprovedKGVisualizer:
         return output_path
 
     def _filter_kg(
-            self, min_confidence: float, show_only_types: Optional[List[str]]
+        self, min_confidence: float, show_only_types: Optional[List[str]]
     ) -> nx.DiGraph:
         """Filter KG by confidence and entity types."""
         G = nx.DiGraph()
@@ -144,8 +144,7 @@ class ImprovedKGVisualizer:
         layers = self._assign_layers(G)
 
         # Within each layer, cluster by entity type
-        layer_x_offset = {}
-        for layer_idx, nodes_in_layer in enumerate(layers.items()):
+        for layer_idx, nodes_in_layer in layers.items():
             y = layer_idx * 200  # Vertical spacing
 
             # Group by type within layer
@@ -198,8 +197,8 @@ class ImprovedKGVisualizer:
         return layers
 
     def _build_plotly_figure(
-            self, G: nx.DiGraph, pos: Dict, min_confidence: float
-    ):
+        self, G: nx.DiGraph, pos: Dict, min_confidence: float
+    ) -> "go.Figure":
         """Build the Plotly figure with all visual elements."""
         try:
             import plotly.graph_objects as go
