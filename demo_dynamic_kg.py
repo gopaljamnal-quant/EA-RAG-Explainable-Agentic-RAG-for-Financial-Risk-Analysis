@@ -81,6 +81,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="kg_metrics.html",
         help="Output path for metrics dashboard",
     )
+    parser.add_argument(
+        "--index-output",
+        default="index.html",
+        help="Output path for the single-page dynamic knowledge graph view",
+    )
 
     # Query options
     parser.add_argument(
@@ -241,10 +246,16 @@ def main() -> None:
         show_only_types=["COMPANY", "SUBSIDIARY", "RISK_FACTOR"],
     )
     metrics_path = visualizer.to_metrics_dashboard(output_path=args.metrics_output)
+    index_path = visualizer.to_single_page_html(
+        output_path=args.index_output,
+        min_confidence=args.min_confidence,
+        show_only_types=["COMPANY", "SUBSIDIARY", "RISK_FACTOR"],
+    )
 
     print(f"\n✅ Visualizations ready:")
     print(f"   🔗 Hierarchical graph: {hierarchical_path}")
     print(f"   📊 Metrics dashboard:  {metrics_path}")
+    print(f"   🧭 Single-page graph view: {index_path}")
     print(f"\n💡 TIP: Open {hierarchical_path} in a web browser to explore!")
     print(f"   - Node size = connectivity (bigger = more important)")
     print(f"   - Line thickness = confidence (thick = high confidence)")
@@ -292,10 +303,11 @@ def main() -> None:
 
     _print_step_banner("✅ ANALYSIS COMPLETE")
     print(f"\nNext steps:")
-    print(f"  1. 🌐 Open {args.graph_output} in your browser")
-    print(f"  2. 📈 View metrics at {args.metrics_output}")
-    print(f"  3. 📋 Inspect kg_data.json for raw node/edge data")
-    print(f"  4. ➕ Add more PDFs to {args.doc_dir}/ and re-run for larger KGs\n")
+    print(f"  1. 🌐 Open {args.index_output} for the single-page interactive graph view")
+    print(f"  2. 🔗 Open {args.graph_output} for the hierarchical graph")
+    print(f"  3. 📈 View metrics at {args.metrics_output}")
+    print(f"  4. 📋 Inspect kg_data.json for raw node/edge data")
+    print(f"  5. ➕ Add more PDFs to {args.doc_dir}/ and re-run for larger KGs\n")
 
 
 if __name__ == "__main__":

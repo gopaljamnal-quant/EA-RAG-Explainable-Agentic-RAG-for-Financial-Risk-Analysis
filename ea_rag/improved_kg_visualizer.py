@@ -63,6 +63,84 @@ class ImprovedKGVisualizer:
         print(f"✓ High-quality graph saved to {output_path}")
         return output_path
 
+    def to_kg_data(
+        self,
+        min_confidence: float = 0.0,
+        show_only_types: Optional[List[str]] = None,
+    ) -> Dict:
+        """
+        Serialize the (filtered) knowledge graph to a plain JSON-friendly dict
+        of ``nodes``/``edges``/``stats``.
+
+        This is the single source of truth for graph data consumed by both
+        ``kg_data.json`` and the embedded single-page HTML viewer, so the
+        page is always driven by whatever the Python pipeline just
+        extracted rather than any hardcoded sample.
+        """
+        G = self._filter_kg(min_confidence, show_only_types)
+
+        nodes = [
+            {
+                "id": node,
+                "label": data.get("label", node),
+                "type": data.get("type", "COMPANY"),
+                "in_degree": G.in_degree(node),
+                "out_degree": G.out_degree(node),
+            }
+            for node, data in G.nodes(data=True)
+        ]
+        edges = [
+            {
+                "source": u,
+                "target": v,
+                "relation": data.get("relation", "UNKNOWN"),
+                "confidence": data.get("confidence", 0.0),
+                "source_doc": data.get("source_doc", "unknown"),
+            }
+            for u, v, data in G.edges(data=True)
+        ]
+
+        return {
+            "nodes": nodes,
+            "edges": edges,
+            "stats": self.kg.stats(),
+            "min_confidence": min_confidence,
+        }
+
+    def to_single_page_html(
+        self,
+        output_path: str = "index.html",
+        min_confidence: float = 0.0,
+        show_only_types: Optional[List[str]] = None,
+        title: str = "EA-RAG: Explainable Agentic RAG for Financial Risk Analysis",
+    ) -> str:
+        """
+        Generate a single, self-contained HTML page that embeds the current
+        knowledge graph and renders it as an interactive, force-directed
+        network (vis-network via CDN).
+
+        The graph data is embedded as JSON generated from the live KG at
+        call time (i.e. from whatever documents were just processed by
+        ``demo_dynamic_kg.py``), so the page is fully dynamic rather than a
+        static summary with hardcoded sample data. Embedding the data
+        directly (instead of `fetch()`-ing a sibling JSON file) keeps the
+        page a single file that also works when opened directly from disk
+        (``file://``), where cross-origin fetches of local files are
+        blocked by browsers.
+        """
+        kg_data = self.to_kg_data(min_confidence, show_only_types)
+        kg_data_json = json.dumps(kg_data)
+
+        html = (
+            _SINGLE_PAGE_TEMPLATE.replace("__TITLE__", title)
+            .replace("__MIN_CONFIDENCE__", f"{min_confidence:.2f}")
+            .replace("__KG_DATA_JSON__", kg_data_json)
+        )
+
+        Path(output_path).write_text(html, encoding="utf-8")
+        print(f"✓ Single-page dynamic graph view saved to {output_path}")
+        return output_path
+
     def _filter_kg(
         self, min_confidence: float, show_only_types: Optional[List[str]]
     ) -> nx.DiGraph:
@@ -552,3 +630,258 @@ class ImprovedKGVisualizer:
             print(f"\n  High confidence (≥0.8): {high_conf} ({100*high_conf/len(confs):.1f}%)")
             print(f"  Medium confidence (0.6-0.8): {med_conf} ({100*med_conf/len(confs):.1f}%)")
             print(f"  Low confidence (<0.6): {low_conf} ({100*low_conf/len(confs):.1f}%)")
+
+
+# Single-page, self-contained HTML shell for the dynamic knowledge graph
+# viewer. `__KG_DATA_JSON__` is replaced with the JSON produced by
+# `ImprovedKGVisualizer.to_kg_data()` at generation time -- there is no
+# hardcoded sample graph baked into this template.
+_SINGLE_PAGE_TEMPLATE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>__TITLE__</title>
+<script src="https://unpkg.com/vis-network@9/standalone/umd/vis-network.min.js"></script>
+<style>
+  :root {
+    --bg: #f8f9fa;
+    --panel-bg: #ffffff;
+    --text: #1f2933;
+    --muted: #5b6b79;
+    --accent: #1f77b4;
+    --border: #dfe3e6;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    background: #1f2933;
+    color: #fff;
+    padding: 0.9rem 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+  header h1 { margin: 0; font-size: 1.15rem; }
+  header .subtitle { color: #c9d3db; font-size: 0.85rem; }
+  #app { flex: 1; display: flex; min-height: 0; }
+  #graph { flex: 1; min-width: 0; background: #fff; }
+  #sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    background: var(--panel-bg);
+    border-left: 1px solid var(--border);
+    padding: 1rem;
+    overflow-y: auto;
+  }
+  #sidebar h2 { font-size: 1rem; margin: 0 0 0.5rem; }
+  #sidebar h3 { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin: 1.25rem 0 0.4rem; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; text-align: center; }
+  .stat .value { font-size: 1.2rem; font-weight: bold; color: var(--accent); }
+  .stat .label { font-size: 0.72rem; color: var(--muted); }
+  #controls { display: flex; flex-direction: column; gap: 0.5rem; }
+  #controls label { font-size: 0.8rem; color: var(--muted); }
+  #search { width: 100%; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; }
+  #details { font-size: 0.85rem; }
+  #details table { width: 100%; border-collapse: collapse; }
+  #details td { padding: 0.2rem 0; vertical-align: top; }
+  #details td:first-child { color: var(--muted); width: 40%; }
+  #empty-state { color: var(--muted); font-size: 0.85rem; }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; margin-bottom: 0.3rem; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  footer { text-align: center; color: var(--muted); padding: 0.5rem; font-size: 0.78rem; background: var(--panel-bg); border-top: 1px solid var(--border); }
+  code { background: #eef1f3; padding: 0.1rem 0.35rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>__TITLE__</h1>
+  <span class="subtitle">Interactive knowledge graph &mdash; generated dynamically by <code>demo_dynamic_kg.py</code></span>
+</header>
+
+<div id="app">
+  <div id="graph"></div>
+  <div id="sidebar">
+    <h2>Graph Overview</h2>
+    <div id="stats" class="stat-grid"></div>
+
+    <h3>Search</h3>
+    <div id="controls">
+      <input id="search" type="text" placeholder="Filter nodes by name or type&hellip;">
+    </div>
+
+    <h3>Entity Types</h3>
+    <div id="legend"></div>
+
+    <h3>Selected Node / Edge</h3>
+    <div id="details">
+      <p id="empty-state">Click a node or edge in the graph to inspect its metadata.</p>
+      <table id="details-table" style="display:none;"></table>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Min. relation confidence shown: __MIN_CONFIDENCE__ &middot;
+  Data extracted live from the EA-RAG pipeline (no hardcoded sample data).
+</footer>
+
+<script>
+  // Graph data generated from the live EA-RAG knowledge graph pipeline
+  // (ImprovedKGVisualizer.to_kg_data()) -- not a hardcoded sample.
+  const KG_DATA = __KG_DATA_JSON__;
+
+  const ENTITY_COLORS = {
+    COMPANY: "#1f77b4",
+    SUBSIDIARY: "#ff7f0e",
+    RISK_FACTOR: "#d62728",
+    INSTRUMENT: "#2ca02c",
+    PERSON: "#9467bd",
+    REGULATORY_EVENT: "#8c564b",
+  };
+
+  function colorFor(type) {
+    return ENTITY_COLORS[type] || "#999999";
+  }
+
+  const nodesById = {};
+  KG_DATA.nodes.forEach((n) => { nodesById[n.id] = n; });
+
+  const visNodes = new vis.DataSet(
+    KG_DATA.nodes.map((n) => ({
+      id: n.id,
+      label: n.label,
+      title: n.type,
+      color: colorFor(n.type),
+      value: 1 + n.in_degree + n.out_degree,
+    }))
+  );
+
+  const visEdges = new vis.DataSet(
+    KG_DATA.edges.map((e, i) => ({
+      id: i,
+      from: e.source,
+      to: e.target,
+      label: e.relation,
+      arrows: "to",
+      width: 1 + e.confidence * 4,
+      title: e.relation + " (confidence " + e.confidence.toFixed(2) + ")",
+    }))
+  );
+
+  const container = document.getElementById("graph");
+  const network = new vis.Network(
+    container,
+    { nodes: visNodes, edges: visEdges },
+    {
+      layout: { improvedLayout: true },
+      physics: { stabilization: true, barnesHut: { gravitationalConstant: -12000, springLength: 150 } },
+      nodes: { shape: "dot", font: { size: 13 } },
+      edges: { font: { size: 10, align: "middle" }, smooth: { type: "dynamic" } },
+      interaction: { hover: true, tooltipDelay: 100 },
+    }
+  );
+
+  function renderStats() {
+    const stats = KG_DATA.stats || {};
+    const entries = [
+      ["Entities", KG_DATA.nodes.length],
+      ["Relations", KG_DATA.edges.length],
+      ["Production edges", stats.production_edges ?? "-"],
+      ["Staging edges", stats.staging_edges ?? "-"],
+    ];
+    document.getElementById("stats").innerHTML = entries
+      .map(([label, value]) => (
+        '<div class="stat"><div class="value">' + value + '</div><div class="label">' + label + "</div></div>"
+      ))
+      .join("");
+  }
+
+  function renderLegend() {
+    const typesPresent = new Set(KG_DATA.nodes.map((n) => n.type));
+    document.getElementById("legend").innerHTML = Array.from(typesPresent)
+      .map((t) => (
+        '<div class="legend-item"><span class="legend-swatch" style="background:' + colorFor(t) + '"></span>' + t + "</div>"
+      ))
+      .join("") || '<p id="empty-state">No entities extracted yet.</p>';
+  }
+
+  function showNodeDetails(nodeId) {
+    const n = nodesById[nodeId];
+    if (!n) return;
+    const rows = [
+      ["Name", n.label],
+      ["Type", n.type],
+      ["In-degree", n.in_degree],
+      ["Out-degree", n.out_degree],
+    ];
+    renderDetailsTable(rows);
+  }
+
+  function showEdgeDetails(edgeId) {
+    const e = KG_DATA.edges[edgeId];
+    if (!e) return;
+    const rows = [
+      ["Relation", e.relation],
+      ["Source", (nodesById[e.source] || {}).label || e.source],
+      ["Target", (nodesById[e.target] || {}).label || e.target],
+      ["Confidence", e.confidence.toFixed(2)],
+      ["Source document", e.source_doc],
+    ];
+    renderDetailsTable(rows);
+  }
+
+  function renderDetailsTable(rows) {
+    document.getElementById("empty-state").style.display = "none";
+    const table = document.getElementById("details-table");
+    table.style.display = "";
+    table.innerHTML = rows
+      .map(([k, v]) => "<tr><td>" + k + "</td><td>" + v + "</td></tr>")
+      .join("");
+  }
+
+  network.on("click", (params) => {
+    if (params.nodes.length > 0) {
+      showNodeDetails(params.nodes[0]);
+    } else if (params.edges.length > 0) {
+      showEdgeDetails(params.edges[0]);
+    }
+  });
+
+  document.getElementById("search").addEventListener("input", (evt) => {
+    const q = evt.target.value.trim().toLowerCase();
+    const matches = KG_DATA.nodes
+      .filter((n) => !q || n.label.toLowerCase().includes(q) || n.type.toLowerCase().includes(q))
+      .map((n) => n.id);
+    visNodes.update(
+      KG_DATA.nodes.map((n) => ({
+        id: n.id,
+        color: matches.includes(n.id) ? colorFor(n.type) : "rgba(200,200,200,0.35)",
+      }))
+    );
+  });
+
+  renderStats();
+  renderLegend();
+
+  if (KG_DATA.nodes.length === 0) {
+    document.getElementById("graph").innerHTML =
+      '<div style="padding:2rem;color:#5b6b79;">No knowledge graph data was available when this page was generated. ' +
+      'Run <code>python demo_dynamic_kg.py --backend mock</code> to (re)extract a graph from your documents and regenerate this page.</div>';
+  }
+</script>
+
+</body>
+</html>
+"""

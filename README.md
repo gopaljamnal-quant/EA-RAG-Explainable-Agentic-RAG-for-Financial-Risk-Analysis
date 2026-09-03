@@ -4,9 +4,12 @@ Reference implementation accompanying the paper *"Explainable Agentic RAG for Fi
 
 This is a runnable, dependency-light implementation of the architecture in the paper (Section IV), not a production system. It is meant to make the paper's design concrete — every class below maps directly to a component or algorithm described in the text — and to give you a base to extend with real data, a real LLM, and a real NLI/faithfulness model.
 
-A static, single-page summary of the project (overview, run instructions, and a
-sample of the risk-analysis output) is available in [`index.html`](index.html) —
-open it directly in a browser, no server required.
+A dynamic, single-page knowledge graph viewer is available in
+[`index.html`](index.html) — open it directly in a browser, no server
+required. It embeds the actual entities/relations extracted by the last run
+of `demo_dynamic_kg.py` (via `ImprovedKGVisualizer.to_single_page_html`), so
+it is regenerated from real pipeline output rather than hardcoded sample
+data.
 
 ## How to run
 
@@ -17,9 +20,13 @@ python demo_dynamic_kg.py --backend mock              # offline, no API key, no 
 python -m pytest tests/ -v                             # requires: pip install pytest
 ```
 
-The mock run generates two local files that are not checked into the repo
-(see `.gitignore`): `kg_graph_improved.html` (interactive graph) and
-`kg_metrics.html` (metrics dashboard). Open either in a browser to explore.
+The mock run regenerates `index.html` (single-page interactive graph view,
+checked into the repo so it can be opened without running anything first)
+plus files that are not checked into the repo (see `.gitignore`):
+`kg_graph_improved.html` (hierarchical graph, requires `plotly`),
+`kg_metrics.html` (metrics dashboard), and `kg_data.json` (raw node/edge
+data). Use `--index-output`, `--graph-output`, and `--metrics-output` to
+change where each file is written.
 
 ## Simplified Structure
 
@@ -28,7 +35,7 @@ ea_rag/                  # Core library (see table below for what each file does
 demo_dynamic_kg.py        # Main entry point: extraction + orchestration + visualization
 dynamic_kg_extractor.py   # Entity/relation extraction from document text
 pdf_loader.py             # load_pdfs() utility
-index.html                # Static single-page project summary
+index.html                # Dynamic single-page knowledge graph view (generated)
 tests/test_ea_rag.py      # Unit tests
 ```
 
@@ -97,6 +104,9 @@ python demo_dynamic_kg.py --backend mock
    - Edge width/dash style by relation confidence
    - Hover for details, filter by confidence/type
    - Metrics dashboard: entity distributions, relation statistics, confidence analysis
+   - Single-page dynamic graph view (`index.html`): a self-contained,
+     interactive network view of the same live KG data, with search,
+     legend, and a metadata panel for the selected node/edge
 
 ### Command-line Options:
 
@@ -116,7 +126,8 @@ python demo_dynamic_kg.py --backend anthropic --model claude-sonnet-5
 # Customize output paths
 python demo_dynamic_kg.py --backend mock \
   --graph-output my_kg.html \
-  --metrics-output my_metrics.html
+  --metrics-output my_metrics.html \
+  --index-output my_index.html
 
 # Adjust KG confidence threshold
 python demo_dynamic_kg.py --backend mock --min-confidence 0.8

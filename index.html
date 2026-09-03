@@ -4,88 +4,64 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EA-RAG: Explainable Agentic RAG for Financial Risk Analysis</title>
+<script src="https://unpkg.com/vis-network@9/standalone/umd/vis-network.min.js"></script>
 <style>
   :root {
     --bg: #f8f9fa;
-    --card-bg: #ffffff;
+    --panel-bg: #ffffff;
     --text: #1f2933;
     --muted: #5b6b79;
     --accent: #1f77b4;
     --border: #dfe3e6;
-    --high: #2ca02c;
-    --medium: #ff7f0e;
-    --low: #d62728;
   }
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body {
     margin: 0;
     font-family: Arial, Helvetica, sans-serif;
     color: var(--text);
     background: var(--bg);
-    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
   }
   header {
     background: #1f2933;
     color: #fff;
-    padding: 2rem 1.5rem;
-    text-align: center;
-  }
-  header h1 { margin: 0 0 0.5rem; font-size: 1.8rem; }
-  header p { margin: 0; color: #c9d3db; }
-  nav {
+    padding: 0.9rem 1.25rem;
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
-    gap: 1rem;
-    background: #fff;
-    border-bottom: 1px solid var(--border);
-    padding: 0.75rem 1rem;
-    position: sticky;
-    top: 0;
+    align-items: baseline;
+    gap: 0.75rem;
   }
-  nav a { color: var(--accent); text-decoration: none; font-weight: bold; }
-  nav a:hover { text-decoration: underline; }
-  main { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
-  section { margin-bottom: 2.5rem; }
-  h2 {
-    border-bottom: 2px solid var(--accent);
-    padding-bottom: 0.4rem;
-    font-size: 1.3rem;
-  }
-  .card {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 1rem;
-  }
-  pre {
-    background: #1f2933;
-    color: #e8eef2;
+  header h1 { margin: 0; font-size: 1.15rem; }
+  header .subtitle { color: #c9d3db; font-size: 0.85rem; }
+  #app { flex: 1; display: flex; min-height: 0; }
+  #graph { flex: 1; min-width: 0; background: #fff; }
+  #sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    background: var(--panel-bg);
+    border-left: 1px solid var(--border);
     padding: 1rem;
-    border-radius: 6px;
-    overflow-x: auto;
-    font-size: 0.9rem;
+    overflow-y: auto;
   }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); font-size: 0.92rem; }
-  th { color: var(--muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.03em; }
-  .badge {
-    display: inline-block;
-    padding: 0.15rem 0.5rem;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: bold;
-    color: #fff;
-  }
-  .badge-high { background: var(--high); }
-  .badge-medium { background: var(--medium); }
-  .badge-low { background: var(--low); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
-  .metric { text-align: center; }
-  .metric .value { font-size: 1.6rem; font-weight: bold; color: var(--accent); }
-  .metric .label { color: var(--muted); font-size: 0.85rem; }
-  footer { text-align: center; color: var(--muted); padding: 1.5rem; font-size: 0.85rem; }
+  #sidebar h2 { font-size: 1rem; margin: 0 0 0.5rem; }
+  #sidebar h3 { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin: 1.25rem 0 0.4rem; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .stat { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; text-align: center; }
+  .stat .value { font-size: 1.2rem; font-weight: bold; color: var(--accent); }
+  .stat .label { font-size: 0.72rem; color: var(--muted); }
+  #controls { display: flex; flex-direction: column; gap: 0.5rem; }
+  #controls label { font-size: 0.8rem; color: var(--muted); }
+  #search { width: 100%; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; }
+  #details { font-size: 0.85rem; }
+  #details table { width: 100%; border-collapse: collapse; }
+  #details td { padding: 0.2rem 0; vertical-align: top; }
+  #details td:first-child { color: var(--muted); width: 40%; }
+  #empty-state { color: var(--muted); font-size: 0.85rem; }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; margin-bottom: 0.3rem; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  footer { text-align: center; color: var(--muted); padding: 0.5rem; font-size: 0.78rem; background: var(--panel-bg); border-top: 1px solid var(--border); }
   code { background: #eef1f3; padding: 0.1rem 0.35rem; border-radius: 4px; }
 </style>
 </head>
@@ -93,152 +69,180 @@
 
 <header>
   <h1>EA-RAG: Explainable Agentic RAG for Financial Risk Analysis</h1>
-  <p>Knowledge-graph-grounded, multi-agent pipeline for trustworthy financial risk intelligence</p>
+  <span class="subtitle">Interactive knowledge graph &mdash; generated dynamically by <code>demo_dynamic_kg.py</code></span>
 </header>
 
-<nav>
-  <a href="#overview">Overview</a>
-  <a href="#run">How to Run</a>
-  <a href="#structure">Simplified Structure</a>
-  <a href="#pipeline">Pipeline</a>
-  <a href="#sample-output">Sample Output</a>
-</nav>
+<div id="app">
+  <div id="graph"></div>
+  <div id="sidebar">
+    <h2>Graph Overview</h2>
+    <div id="stats" class="stat-grid"></div>
 
-<main>
-
-  <section id="overview">
-    <h2>Overview</h2>
-    <div class="card">
-      <p>
-        This project is a runnable, dependency-light reference implementation of the paper
-        <em>"Explainable Agentic RAG for Financial Risk Analysis."</em> It extracts a
-        knowledge graph from financial documents, answers risk questions through a
-        verification-gated multi-agent loop, and backs every claim with quantitative
-        models and traceable provenance &mdash; instead of an LLM guessing numbers.
-      </p>
-      <p>
-        This page is a static, single-file summary of the project meant to be readable
-        without running anything. The real interactive graph/metrics dashboards are
-        generated locally by <code>demo_dynamic_kg.py</code> (see below) and are not
-        checked into the repository.
-      </p>
+    <h3>Search</h3>
+    <div id="controls">
+      <input id="search" type="text" placeholder="Filter nodes by name or type&hellip;">
     </div>
-  </section>
 
-  <section id="run">
-    <h2>How to Run</h2>
-    <div class="card">
-      <pre><code># 1. Create a virtual environment and install dependencies
-python -m venv .venv &amp;&amp; source .venv/bin/activate
-pip install -r requirements.txt
+    <h3>Entity Types</h3>
+    <div id="legend"></div>
 
-# 2. Run the offline demo (no API key, no GPU required)
-python demo_dynamic_kg.py --backend mock
-
-# 3. Run the test suite
-pip install pytest
-python -m pytest tests/ -v
-
-# 4. Open the generated visualizations
-#    - kg_graph_improved.html  (interactive knowledge graph)
-#    - kg_metrics.html         (metrics dashboard)</code></pre>
-      <p>See <a href="README.md">README.md</a> for the full guide, including how to
-        switch to a real LLM backend (Ollama, Hugging Face, or Anthropic).</p>
+    <h3>Selected Node / Edge</h3>
+    <div id="details">
+      <p id="empty-state">Click a node or edge in the graph to inspect its metadata.</p>
+      <table id="details-table" style="display:none;"></table>
     </div>
-  </section>
-
-  <section id="structure">
-    <h2>Simplified Structure</h2>
-    <div class="card">
-      <table>
-        <thead>
-          <tr><th>File</th><th>Responsibility</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><code>ea_rag/data_models.py</code></td><td>Core data types: Entity, Relation, Document, Claim, Provenance</td></tr>
-          <tr><td><code>ea_rag/kg.py</code></td><td>Financial knowledge graph: confidence-gated production/staging graphs</td></tr>
-          <tr><td><code>ea_rag/retrieval.py</code></td><td>Dense (TF-IDF) and graph-based passage retrieval</td></tr>
-          <tr><td><code>ea_rag/quant.py</code></td><td>Merton distance-to-default and parametric VaR models</td></tr>
-          <tr><td><code>ea_rag/agents.py</code></td><td>Planner, GraphReasoner, CriticVerifier, and Explainer agents</td></tr>
-          <tr><td><code>ea_rag/orchestrator.py</code></td><td>Verification-gated retry loop (Algorithm&nbsp;1)</td></tr>
-          <tr><td><code>ea_rag/llm.py</code></td><td>Pluggable LLM backends: Mock, Ollama, Hugging Face, Anthropic</td></tr>
-          <tr><td><code>ea_rag/dynamic_kg_extractor.py</code></td><td>Entity/relation extraction from raw document text</td></tr>
-          <tr><td><code>ea_rag/improved_kg_visualizer.py</code></td><td>Generates the interactive graph and metrics dashboard HTML</td></tr>
-          <tr><td><code>pdf_loader.py</code></td><td>Loads PDFs and auto-detects document type</td></tr>
-          <tr><td><code>demo_dynamic_kg.py</code></td><td>End-to-end entry point tying every step together</td></tr>
-          <tr><td><code>tests/test_ea_rag.py</code></td><td>Unit tests for KG gating, Merton model, and orchestration</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section id="pipeline">
-    <h2>Pipeline</h2>
-    <div class="card">
-      <ol>
-        <li><strong>Load documents</strong> &mdash; PDFs are parsed and tagged by type (10-K, 8-K, earnings, ...).</li>
-        <li><strong>Extract the knowledge graph</strong> &mdash; entities (companies, subsidiaries, risk factors) and relations (SUPPLIES, GUARANTEES, OWNS, EXPOSED_TO) are extracted with a confidence score; high-impact relations require &gt;75% confidence to enter the production graph.</li>
-        <li><strong>Plan &amp; retrieve</strong> &mdash; the query is decomposed into sub-tasks; each sub-task retrieves dense passages and graph evidence.</li>
-        <li><strong>Reason &amp; verify</strong> &mdash; a claim is drafted, checked against the evidence, and retried if confidence is too low.</li>
-        <li><strong>Explain</strong> &mdash; the final answer is returned with full provenance (source documents, graph paths, confidence).</li>
-      </ol>
-    </div>
-  </section>
-
-  <section id="sample-output">
-    <h2>Sample Output</h2>
-    <div class="card">
-      <p>Illustrative example of what a completed run reports (actual numbers depend on the documents you provide):</p>
-
-      <div class="grid">
-        <div class="metric"><div class="value">42</div><div class="label">Entities extracted</div></div>
-        <div class="metric"><div class="value">57</div><div class="label">Relations extracted</div></div>
-        <div class="metric"><div class="value">0.81</div><div class="label">Avg. confidence</div></div>
-        <div class="metric"><div class="value">2</div><div class="label">Verified claims</div></div>
-      </div>
-
-      <h3>Verified Claims</h3>
-      <table>
-        <thead>
-          <tr><th>Claim</th><th>Confidence</th><th>Supported</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Apple is exposed to supply-chain risk via its subsidiaries.</td>
-            <td><span class="badge badge-high">0.88</span></td>
-            <td>Yes</td>
-          </tr>
-          <tr>
-            <td>A parent guarantee increases the subsidiary's probability of default.</td>
-            <td><span class="badge badge-medium">0.72</span></td>
-            <td>Yes</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <h3>Quantitative Check (Merton Model)</h3>
-      <table>
-        <thead>
-          <tr><th>Scenario</th><th>P[default]</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Baseline</td><td>2.1%</td></tr>
-          <tr><td>Stressed (higher volatility, lower assets)</td><td>6.4%</td></tr>
-          <tr><td>Counterfactual (guarantee released)</td><td>3.8%</td></tr>
-        </tbody>
-      </table>
-
-      <p>Run <code>python demo_dynamic_kg.py --backend mock</code> to generate the real,
-        interactive versions of these outputs (<code>kg_graph_improved.html</code> and
-        <code>kg_metrics.html</code>) from your own documents.</p>
-    </div>
-  </section>
-
-</main>
+  </div>
+</div>
 
 <footer>
-  Research/teaching reference code &mdash; see <a href="README.md">README.md</a> for citation, license, and full documentation.
+  Min. relation confidence shown: 0.70 &middot;
+  Data extracted live from the EA-RAG pipeline (no hardcoded sample data).
 </footer>
+
+<script>
+  // Graph data generated from the live EA-RAG knowledge graph pipeline
+  // (ImprovedKGVisualizer.to_kg_data()) -- not a hardcoded sample.
+  const KG_DATA = {"nodes": [{"id": "washington", "label": "Washington", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "mark_one", "label": "Mark One", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "for", "label": "For", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "june", "label": "June", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "commission_file_number", "label": "Commission File Number", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "apple_inc", "label": "Apple Inc", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "exact", "label": "Exact", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "registrant", "label": "Registrant", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "california", "label": "California", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "state", "label": "State", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "employer_identification_no", "label": "Employer Identification No", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "address", "label": "Address", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "zip_code", "label": "Zip Code", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "securities", "label": "Securities", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "section", "label": "Section", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "act", "label": "Act", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "title", "label": "Title", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "trading", "label": "Trading", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "name", "label": "Name", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "common_stock", "label": "Common Stock", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "notes", "label": "Notes", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "the_nasdaq_st", "label": "The Nasdaq St", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "indicate", "label": "Indicate", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "securities_exchange_act", "label": "Securities Exchange Act", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "yes", "label": "Yes", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "no", "label": "No", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "interactive_data_file", "label": "Interactive Data File", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "rule", "label": "Rule", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "regulation", "label": "Regulation", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "registr", "label": "Registr", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "see", "label": "See", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "exchange_act", "label": "Exchange Act", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "large", "label": "Large", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "accelerated", "label": "Accelerated", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "non", "label": "Non", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "smaller", "label": "Smaller", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "emerging", "label": "Emerging", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "if", "label": "If", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "july", "label": "July", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "form", "label": "Form", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "page\npart", "label": "Page\nPart", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "item", "label": "Item", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "financial_statements", "label": "Financial Statements", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "management", "label": "Management", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "discussion", "label": "Discussion", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "analysis", "label": "Analysis", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "financial_condition", "label": "Financial Condition", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "results", "label": "Results", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "operations", "label": "Operations", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "quantitative", "label": "Quantitative", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "qualitative_disclosures_about_market_risk", "label": "Qualitative Disclosures About Market Risk", "type": "RISK_FACTOR", "in_degree": 0, "out_degree": 0}, {"id": "controls", "label": "Controls", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "procedures", "label": "Procedures", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "part", "label": "Part", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "in", "label": "In", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "net", "label": "Net", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "products", "label": "Products", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "services", "label": "Services", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "total", "label": "Total", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "cost", "label": "Cost", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "gross", "label": "Gross", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "operating", "label": "Operating", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "research", "label": "Research", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "selling", "label": "Selling", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "other", "label": "Other", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "income", "label": "Income", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "provision", "label": "Provision", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "earnings", "label": "Earnings", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "basic", "label": "Basic", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "diluted", "label": "Diluted", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "shares", "label": "Shares", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "condensed_consolidated_financial_statements", "label": "Condensed Consolidated Financial Statements", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "unaudited", "label": "Unaudited", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "change", "label": "Change", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "adjustment", "label": "Adjustment", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "september", "label": "September", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "current", "label": "Current", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "cash", "label": "Cash", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "marketable", "label": "Marketable", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "acc", "label": "Acc", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "accounts", "label": "Accounts", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "vendor", "label": "Vendor", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "inventories", "label": "Inventories", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "property", "label": "Property", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "intangible", "label": "Intangible", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "deferred", "label": "Deferred", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "commercial", "label": "Commercial", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "term", "label": "Term", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "commitments", "label": "Commitments", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "sharehol", "label": "Sharehol", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "shareholders", "label": "Shareholders", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "common", "label": "Common", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "retained", "label": "Retained", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "accumulated", "label": "Accumulated", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "beginning", "label": "Beginning", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "share", "label": "Share", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "ending", "label": "Ending", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "dividends", "label": "Dividends", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "adjustments", "label": "Adjustments", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "depreciation", "label": "Depreciation", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "changes", "label": "Changes", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "acco", "label": "Acco", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "investing", "label": "Investing", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "purchases", "label": "Purchases", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "proceeds", "label": "Proceeds", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "payments", "label": "Payments", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "financing", "label": "Financing", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "repurchases", "label": "Repurchases", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "repayments", "label": "Repayments", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "increase", "label": "Increase", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "supplemental", "label": "Supplemental", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "note", "label": "Note", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "summary", "label": "Summary", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "presentation", "label": "Presentation", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "preparation\nthe", "label": "Preparation\nThe", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "apple", "label": "Apple", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "company", "label": "Company", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "the", "label": "The", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "certain", "label": "Certain", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "these", "label": "These", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "annual_report", "label": "Annual Report", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "the_company", "label": "The Company", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "saturday", "label": "Saturday", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "an", "label": "An", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "unless", "label": "Unless", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "revenue\nthe", "label": "Revenue\nThe", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "mac", "label": "Mac", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "wearables", "label": "Wearables", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "home", "label": "Home", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "accessories", "label": "Accessories", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "portion", "label": "Portion", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "segment\ninformation", "label": "Segment\nInformation", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "greater_china", "label": "Greater China", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "as", "label": "As", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "numerator", "label": "Numerator", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "denominator", "label": "Denominator", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "weighted", "label": "Weighted", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "effect", "label": "Effect", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "financial_instruments\ncash", "label": "Financial Instruments\nCash", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "cash_equivalents", "label": "Cash Equivalents", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "marketable_securities\nthe", "label": "Marketable Securities\nThe", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "current_non", "label": "Current Non", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "current\nadjusted_unrealized_unrealized_fair_cash_marketable_marketable\ncost_gains_losses_value_equivalents_securities_securities\ncash", "label": "Current\nAdjusted Unrealized Unrealized Fair Cash Marketable Marketable\nCost Gains Losses Value Equivalents Securities Securities\nCash", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "level", "label": "Level", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "money", "label": "Money", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "mutual", "label": "Mutual", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "subtotal", "label": "Subtotal", "type": "SUBSIDIARY", "in_degree": 0, "out_degree": 0}, {"id": "treasury", "label": "Treasury", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "certificates", "label": "Certificates", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "corporate", "label": "Corporate", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "mortgage", "label": "Mortgage", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "municipal", "label": "Municipal", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "mortga", "label": "Mortga", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "derivative_instruments", "label": "Derivative Instruments", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "hedging\nthe_company", "label": "Hedging\nThe Company", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "however", "label": "However", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "there", "label": "There", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "foreign_exchange_rate_risk\nto", "label": "Foreign Exchange Rate Risk\nTo", "type": "RISK_FACTOR", "in_degree": 0, "out_degree": 0}, {"id": "to", "label": "To", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "interest_rate_risk\nto", "label": "Interest Rate Risk\nTo", "type": "RISK_FACTOR", "in_degree": 0, "out_degree": 0}, {"id": "derivative", "label": "Derivative", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "foreign", "label": "Foreign", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "interest", "label": "Interest", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "accounts_receivable", "label": "Accounts Receivable", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "vendor_non", "label": "Vendor Non", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "trade_receivables\nthe_company", "label": "Trade Receivables\nThe Company", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "rather", "label": "Rather", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "condensed_consolidated_financial_statement_details\nthe", "label": "Condensed Consolidated Financial Statement Details\nThe", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "inventories\njune", "label": "Inventories\nJune", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "components", "label": "Components", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "finished", "label": "Finished", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "plant", "label": "Plant", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "equipment", "label": "Equipment", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "net\njune", "label": "Net\nJune", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "intangible_assets", "label": "Intangible Assets", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "less", "label": "Less", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "debt\ncommercial_paper\nthe_company", "label": "Debt\nCommercial Paper\nThe Company", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "maturities", "label": "Maturities", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "term_debt\nas", "label": "Term Debt\nAs", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "equity\nshare_repurchase_program\nduring", "label": "Equity\nShare Repurchase Program\nDuring", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "under", "label": "Under", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "exchange\nact", "label": "Exchange\nAct", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "based_compensation\nrestricted_stock_units", "label": "Based Compensation\nRestricted Stock Units", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "number", "label": "Number", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "average", "label": "Average", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "grant", "label": "Grant", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "date_fair", "label": "Date Fair", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "value_per", "label": "Value Per", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "balance", "label": "Balance", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "based_compensation\nthe", "label": "Based Compensation\nThe", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "condensed_consolidated_statements", "label": "Condensed Consolidated Statements", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "contingencies\nunconditional_purchase_obligations\nthe_company", "label": "Contingencies\nUnconditional Purchase Obligations\nThe Company", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "future", "label": "Future", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "thereafter", "label": "Thereafter", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "contingencies\nthe_company", "label": "Contingencies\nThe Company", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "segment_information\nthe", "label": "Segment Information\nThe", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "greater_rest", "label": "Greater Rest", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "americas_europe_china_japan_asia_pacific_corporate_total\nnet", "label": "Americas Europe China Japan Asia Pacific Corporate Total\nNet", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "general", "label": "General", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "corporate_total\nnet", "label": "Corporate Total\nNet", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "discu", "label": "Discu", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "operations\nthis_item", "label": "Operations\nThis Item", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "quarterly_report", "label": "Quarterly Report", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "private\nsecurities_litigation_reform_act", "label": "Private\nSecurities Litigation Reform Act", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "forward", "label": "Forward", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "factors", "label": "Factors", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "risk\nfactors", "label": "Risk\nFactors", "type": "RISK_FACTOR", "in_degree": 0, "out_degree": 0}, {"id": "exchange_commission", "label": "Exchange Commission", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "available_information\nthe_company", "label": "Available Information\nThe Company", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "this", "label": "This", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "further", "label": "Further", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "business_seasonality", "label": "Business Seasonality", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "product_introductions\nthe_company", "label": "Product Introductions\nThe Company", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "additionally", "label": "Additionally", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "during", "label": "During", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "golden_gate", "label": "Golden Gate", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "siri", "label": "Siri", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "macroeconomic_conditions\nmacroeconomic", "label": "Macroeconomic Conditions\nMacroeconomic", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "actions", "label": "Actions", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "tariffs", "label": "Tariffs", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "other_measures\nbeginning", "label": "Other Measures\nBeginning", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "china", "label": "China", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "india", "label": "India", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "japan", "label": "Japan", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "south_korea", "label": "South Korea", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "taiwan", "label": "Taiwan", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "vietnam", "label": "Vietnam", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "european_union", "label": "European Union", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "on_january", "label": "On January", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "separately", "label": "Separately", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "february", "label": "February", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "supreme_court", "label": "Supreme Court", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "supreme\ncourt", "label": "Supreme\nCourt", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "trade", "label": "Trade", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "segment_operating_performance\nthe", "label": "Segment Operating Performance\nThe", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "change\namericas", "label": "Change\nAmericas", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "europe", "label": "Europe", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "rest", "label": "Rest", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "asia_pacific", "label": "Asia Pacific", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "americas\namericas", "label": "Americas\nAmericas", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "europe\neurope", "label": "Europe\nEurope", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "asia_pacific\nrest", "label": "Asia Pacific\nRest", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "services_performance\nthe", "label": "Services Performance\nThe", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "pro", "label": "Pro", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "mac\nmac", "label": "Mac\nMac", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "air", "label": "Air", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "year", "label": "Year", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "accessories\nwearable", "label": "Accessories\nWearable", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "accessories\nwearables", "label": "Accessories\nWearables", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "services\nservices", "label": "Services\nServices", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "gross_margin\nproducts", "label": "Gross Margin\nProducts", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "services_gross_margin\nservices", "label": "Services Gross Margin\nServices", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "risk_factors", "label": "Risk Factors", "type": "RISK_FACTOR", "in_degree": 0, "out_degree": 0}, {"id": "operating_expenses\noperating", "label": "Operating Expenses\nOperating", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "change\nresearch", "label": "Change\nResearch", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "percentage", "label": "Percentage", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "development\nresearch", "label": "Development\nResearch", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "administrative\nselling", "label": "Administrative\nSelling", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "income_taxes\nprovision", "label": "Income Taxes\nProvision", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "effective", "label": "Effective", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "statutory", "label": "Statutory", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "department", "label": "Department", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "december", "label": "December", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "state_aid_decision", "label": "State Aid Decision", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "liquidity", "label": "Liquidity", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "capital_resources\nthe_company", "label": "Capital Resources\nThe Company", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "manufacturing_purchase_obligations\nthe_company", "label": "Manufacturing Purchase Obligations\nThe Company", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "other_purchase_obligations\nthe_company", "label": "Other Purchase Obligations\nThe Company", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "tax_cuts", "label": "Tax Cuts", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "jobs_act", "label": "Jobs Act", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "use_software\nin_september", "label": "Use Software\nIn September", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "accounting_standards_update", "label": "Accounting Standards Update", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "intangibles", "label": "Intangibles", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "goodwill", "label": "Goodwill", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "internal", "label": "Internal", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "use_software", "label": "Use Software", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "subtopic", "label": "Subtopic", "type": "SUBSIDIARY", "in_degree": 0, "out_degree": 0}, {"id": "targeted_improvements", "label": "Targeted Improvements", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "accounting", "label": "Accounting", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "disaggreg", "label": "Disaggreg", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "disaggregation", "label": "Disaggregation", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "income_statement_expenses\nin_november", "label": "Income Statement Expenses\nIn November", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "income_statement", "label": "Income Statement", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "reporting_comprehensive_income", "label": "Reporting Comprehensive Income", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "expense_disaggregation_disclosures", "label": "Expense Disaggregation Disclosures", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "income_statement_expenses", "label": "Income Statement Expenses", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "january", "label": "January", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "clarifying", "label": "Clarifying", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "effective_date", "label": "Effective Date", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "consolidated_statements", "label": "Consolidated Statements", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "income_taxes\nin_december", "label": "Income Taxes\nIn December", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "income_taxes", "label": "Income Taxes", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "topic", "label": "Topic", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "improvements", "label": "Improvements", "type": "COMPANY", "in_degree": 0, "out_degree": 0}, {"id": "income_tax_disclosures", "label": "Income Tax Disclosures", "type": "COMPANY", "in_degree": 0, "out_degree": 0}], "edges": [], "stats": {"entities": 295, "production_edges": 0, "staging_edges": 0}, "min_confidence": 0.7};
+
+  const ENTITY_COLORS = {
+    COMPANY: "#1f77b4",
+    SUBSIDIARY: "#ff7f0e",
+    RISK_FACTOR: "#d62728",
+    INSTRUMENT: "#2ca02c",
+    PERSON: "#9467bd",
+    REGULATORY_EVENT: "#8c564b",
+  };
+
+  function colorFor(type) {
+    return ENTITY_COLORS[type] || "#999999";
+  }
+
+  const nodesById = {};
+  KG_DATA.nodes.forEach((n) => { nodesById[n.id] = n; });
+
+  const visNodes = new vis.DataSet(
+    KG_DATA.nodes.map((n) => ({
+      id: n.id,
+      label: n.label,
+      title: n.type,
+      color: colorFor(n.type),
+      value: 1 + n.in_degree + n.out_degree,
+    }))
+  );
+
+  const visEdges = new vis.DataSet(
+    KG_DATA.edges.map((e, i) => ({
+      id: i,
+      from: e.source,
+      to: e.target,
+      label: e.relation,
+      arrows: "to",
+      width: 1 + e.confidence * 4,
+      title: e.relation + " (confidence " + e.confidence.toFixed(2) + ")",
+    }))
+  );
+
+  const container = document.getElementById("graph");
+  const network = new vis.Network(
+    container,
+    { nodes: visNodes, edges: visEdges },
+    {
+      layout: { improvedLayout: true },
+      physics: { stabilization: true, barnesHut: { gravitationalConstant: -12000, springLength: 150 } },
+      nodes: { shape: "dot", font: { size: 13 } },
+      edges: { font: { size: 10, align: "middle" }, smooth: { type: "dynamic" } },
+      interaction: { hover: true, tooltipDelay: 100 },
+    }
+  );
+
+  function renderStats() {
+    const stats = KG_DATA.stats || {};
+    const entries = [
+      ["Entities", KG_DATA.nodes.length],
+      ["Relations", KG_DATA.edges.length],
+      ["Production edges", stats.production_edges ?? "-"],
+      ["Staging edges", stats.staging_edges ?? "-"],
+    ];
+    document.getElementById("stats").innerHTML = entries
+      .map(([label, value]) => (
+        '<div class="stat"><div class="value">' + value + '</div><div class="label">' + label + "</div></div>"
+      ))
+      .join("");
+  }
+
+  function renderLegend() {
+    const typesPresent = new Set(KG_DATA.nodes.map((n) => n.type));
+    document.getElementById("legend").innerHTML = Array.from(typesPresent)
+      .map((t) => (
+        '<div class="legend-item"><span class="legend-swatch" style="background:' + colorFor(t) + '"></span>' + t + "</div>"
+      ))
+      .join("") || '<p id="empty-state">No entities extracted yet.</p>';
+  }
+
+  function showNodeDetails(nodeId) {
+    const n = nodesById[nodeId];
+    if (!n) return;
+    const rows = [
+      ["Name", n.label],
+      ["Type", n.type],
+      ["In-degree", n.in_degree],
+      ["Out-degree", n.out_degree],
+    ];
+    renderDetailsTable(rows);
+  }
+
+  function showEdgeDetails(edgeId) {
+    const e = KG_DATA.edges[edgeId];
+    if (!e) return;
+    const rows = [
+      ["Relation", e.relation],
+      ["Source", (nodesById[e.source] || {}).label || e.source],
+      ["Target", (nodesById[e.target] || {}).label || e.target],
+      ["Confidence", e.confidence.toFixed(2)],
+      ["Source document", e.source_doc],
+    ];
+    renderDetailsTable(rows);
+  }
+
+  function renderDetailsTable(rows) {
+    document.getElementById("empty-state").style.display = "none";
+    const table = document.getElementById("details-table");
+    table.style.display = "";
+    table.innerHTML = rows
+      .map(([k, v]) => "<tr><td>" + k + "</td><td>" + v + "</td></tr>")
+      .join("");
+  }
+
+  network.on("click", (params) => {
+    if (params.nodes.length > 0) {
+      showNodeDetails(params.nodes[0]);
+    } else if (params.edges.length > 0) {
+      showEdgeDetails(params.edges[0]);
+    }
+  });
+
+  document.getElementById("search").addEventListener("input", (evt) => {
+    const q = evt.target.value.trim().toLowerCase();
+    const matches = KG_DATA.nodes
+      .filter((n) => !q || n.label.toLowerCase().includes(q) || n.type.toLowerCase().includes(q))
+      .map((n) => n.id);
+    visNodes.update(
+      KG_DATA.nodes.map((n) => ({
+        id: n.id,
+        color: matches.includes(n.id) ? colorFor(n.type) : "rgba(200,200,200,0.35)",
+      }))
+    );
+  });
+
+  renderStats();
+  renderLegend();
+
+  if (KG_DATA.nodes.length === 0) {
+    document.getElementById("graph").innerHTML =
+      '<div style="padding:2rem;color:#5b6b79;">No knowledge graph data was available when this page was generated. ' +
+      'Run <code>python demo_dynamic_kg.py --backend mock</code> to (re)extract a graph from your documents and regenerate this page.</div>';
+  }
+</script>
 
 </body>
 </html>
